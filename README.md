@@ -11,6 +11,22 @@ Git-managed Pi customizations.
 
 Pi loads this checkout directly as a local package, so edits here take effect after `/reload` (or after restarting Pi).
 
+## Companion Pi packages
+
+These extensions are installed as separate npm Pi packages rather than vendored in this repository:
+
+- [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) adds lazy, on-demand access to configured MCP servers.
+- [`pi-system-reminders`](https://www.npmjs.com/package/pi-system-reminders) discovers reactive reminders from `~/.pi/agent/reminders/` and `.pi/reminders/`.
+
+Install them globally for Pi:
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install npm:pi-system-reminders
+```
+
+Restart Pi after installation. Use `/mcp setup` to configure MCP sources; see each package's linked documentation for its full setup and security considerations.
+
 ## Telemetry
 
 Telemetry is appended as one JSON object per settled outer operation to:
@@ -42,10 +58,12 @@ node scripts/telemetry-report.mjs --session <session-id>
 node scripts/telemetry-report.mjs /path/to/operations.jsonl --session <session-id>
 ```
 
-To configure this checkout on another machine:
+To configure this checkout on another machine, clone it and install the local package plus its companion packages:
 
 ```bash
 pi install /absolute/path/to/pi-config
+pi install npm:pi-mcp-adapter
+pi install npm:pi-system-reminders
 ```
 
-Pi records the local path in `~/.pi/agent/settings.json`; it does not copy the package.
+Pi records the local checkout path in `~/.pi/agent/settings.json`; it does not copy the package.
