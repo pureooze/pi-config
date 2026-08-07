@@ -23,6 +23,7 @@ export default function (pi: ExtensionAPI) {
       if (!ctx.hasUI) {
         return {
           content: [{ type: "text", text: "Interactive UI is unavailable in this mode." }],
+          details: { code: "ui_unavailable" },
           isError: true,
         };
       }
@@ -30,6 +31,7 @@ export default function (pi: ExtensionAPI) {
       if (params.options.length === 0) {
         return {
           content: [{ type: "text", text: "No options were provided." }],
+          details: { code: "no_options" },
           isError: true,
         };
       }

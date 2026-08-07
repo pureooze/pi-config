@@ -84,7 +84,7 @@ interface OperationRecord {
 	variant?: string;
 	classification: "direct" | "subagent";
 	outer: {
-		initialModel?: { provider: string; model: string; thinkingLevel: string };
+		initialModel?: { provider: string; model: string; thinkingLevel?: string };
 		agentRuns: number;
 		assistantTurns: number;
 		turns: TurnRecord[];
@@ -115,7 +115,7 @@ interface ActiveOperation {
 	cwd: string;
 	experiment?: string;
 	variant?: string;
-	initialModel?: { provider: string; model: string; thinkingLevel: string };
+	initialModel?: { provider: string; model: string; thinkingLevel?: string };
 	agentRuns: number;
 	assistantTurns: number;
 	turns: TurnRecord[];

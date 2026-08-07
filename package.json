@@ -2,7 +2,21 @@
   "name": "pi-config",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.11.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.1"
+  },
   "description": "Git-managed local Pi extensions",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --experimental-strip-types --test tests/unit/*.test.mjs",
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.mjs",
+    "test:integration": "node --test tests/integration/*.test.mjs",
+    "test:corpus": "node scripts/validate-knowledge-graph-mvp-corpus.mjs",
+    "smoke:pi": "node scripts/pi-knowledge-graph-smoke.mjs",
+    "test:all": "npm run typecheck && npm run test:unit && npm run test:integration && npm run test:corpus && npm run smoke:pi"
+  },
   "keywords": [
     "pi-package"
   ],
@@ -16,9 +30,18 @@
   "pi": {
     "extensions": [
       "./extensions/ask-user.ts",
-      "./extensions/subagents/index.ts",
       "./extensions/telemetry/index.ts",
-      "./extensions/todo-session.ts"
+      "./extensions/todo-session.ts",
+      "./extensions/knowledge-graph/index.ts"
     ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "0.84.0",
+    "@earendil-works/pi-ai": "0.84.0",
+    "@earendil-works/pi-coding-agent": "0.84.0",
+    "@earendil-works/pi-tui": "0.84.0",
+    "@types/node": "24.12.4",
+    "typebox": "1.3.7",
+    "typescript": "5.9.3"
   }
 }
