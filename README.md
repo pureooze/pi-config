@@ -5,9 +5,9 @@ Git-managed Pi customizations.
 ## Extensions
 
 - [`ask-user.ts`](extensions/ask-user.ts) provides the interactive `ask_user` tool.
-- [`subagents`](extensions/subagents) provides the model-agnostic `delegate_to_subagent` tool. It dynamically discovers agent profiles from `~/.pi/agent/agents`; those profiles choose their own providers, models, prompts, and tools and are not part of this package. For non-trivial tasks, the tool guidance asks the main agent to delegate suitable bounded work by default after choosing an approach. Running agents refresh their tool row every five seconds with status, elapsed time, last activity, and PID; one minute without process output is marked as possibly stalled.
-- [`telemetry`](extensions/telemetry) records operation, turn, model, token, cost, and subagent metrics described below.
-- [`todo-session.ts`](extensions/todo-session.ts) records Pi session metadata in the nearest `TODO.md`.
+- [`telemetry`](extensions/telemetry) records operation, turn, model, token, and cost metrics described below.
+- [`todo-session.ts`](extensions/todo-session.ts) records the last useful Pi session in the nearest project `TODO.md`.
+- [`scripts/pi-auto-resume`](scripts/pi-auto-resume) is the launcher used by `pi` to resume that recorded session, including when started from a project subdirectory.
 
 Pi loads this checkout directly as a local package, so edits here take effect after `/reload` (or after restarting Pi).
 
@@ -35,18 +35,17 @@ Telemetry is appended as one JSON object per settled outer operation to:
 ~/.pi/agent/telemetry/operations.jsonl
 ```
 
-Set `PI_TELEMETRY_PATH` to use another path. Each record includes outer turn durations and usage grouped by actual provider/model, delegation duration, sanitized child profile/model/timing/usage, and combined outer-plus-subagent totals. Operations are automatically classified as `direct` or `subagent`.
+Set `PI_TELEMETRY_PATH` to use another path. Each record includes operation and outer-turn durations plus usage grouped by actual provider/model.
 
 Telemetry does **not** store prompts, responses, tool arguments or results, delegated task text, stderr, or error text. It does store the session ID and working directory so local results can be grouped by session or project.
 
 For controlled comparisons, label Pi processes with an experiment and optional variant:
 
 ```bash
-PI_TELEMETRY_EXPERIMENT=auth-refactor PI_TELEMETRY_VARIANT=direct pi
-PI_TELEMETRY_EXPERIMENT=auth-refactor PI_TELEMETRY_VARIANT=subagent-model-a pi
+PI_TELEMETRY_EXPERIMENT=auth-refactor PI_TELEMETRY_VARIANT=baseline pi
 ```
 
-The automatic `direct`/`subagent` classification is recorded independently of the manual variant. Every operation also records its Pi session ID.
+Every operation also records its Pi session ID.
 
 Inside Pi, use `/telemetry-status` for the path/count, `/telemetry-report` for a compact comparison, or filter to one session with `/telemetry-report <session-id>`. For the full report:
 
@@ -67,3 +66,28 @@ pi install npm:pi-system-reminders
 ```
 
 Pi records the local checkout path in `~/.pi/agent/settings.json`; it does not copy the package.
+
+## Automatic session resume
+
+Install the launcher after cloning this repository:
+
+```bash
+install -m 755 scripts/pi-auto-resume ~/.local/bin/pi
+```
+
+With a nearby `TODO.md`, bare `pi` resumes its recorded non-empty session. If that
+session is unavailable, it selects the newest usable session for the project.
+Explicit session flags and Pi management commands pass through unchanged. Set
+`PI_TODO_NEW_SESSION=1 pi` (or `PI_AUTO_RESUME=0 pi`) to start fresh once.
+
+The launcher is a wrapper around the real Pi executable; it does not replace Pi
+itself.
+
+## Development
+
+This repository uses npm `11.11.0` with the committed `package-lock.json`.
+
+```bash
+npm ci
+npm run test:all
+```

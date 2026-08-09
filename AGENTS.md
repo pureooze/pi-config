@@ -17,13 +17,6 @@ Apply these defaults when working on TypeScript, React, Vercel, or Supabase repo
 - Do not suppress failing checks, weaken compiler/linter settings, or remove tests merely to make validation pass.
 - Report changed files, validation commands and results, and any unverified assumptions or follow-up work.
 
-## Subagents
-
-- Use `delegate_to_subagent` by default for non-trivial work.
-- Delegate scouting and deterministic checks (search, lint, types, build, tests, diff) to suitable subagents.
-- Give bounded scope and acceptance criteria; never run parallel mutating agents in one checkout.
-- Main agent owns decisions, inspects delegated work, and reports `Delegation:`; skip only for trivial work or no useful isolation.
-
 ## TypeScript
 
 - Preserve strict typing. Prefer inference plus explicit public-boundary types; avoid `any`, unsafe casts, non-null assertions, and broad index signatures.

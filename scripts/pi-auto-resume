@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+set -u
+
+wrapper_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+wrapper_path=$(readlink -f "${BASH_SOURCE[0]}")
+real_pi="${PI_REAL_PI:-}"
+
+if [ -z "$real_pi" ]; then
+	old_ifs=$IFS
+	IFS=:
+	for path_dir in $PATH; do
+		[ -n "$path_dir" ] || path_dir="."
+		candidate="$path_dir/pi"
+		candidate_path=$(readlink -f "$candidate" 2>/dev/null || printf '%s' "$candidate")
+		if [ "$path_dir" = "$wrapper_dir" ] || [ "$candidate_path" = "$wrapper_path" ]; then continue; fi
+		if [ -x "$candidate" ]; then
+			real_pi="$candidate"
+			break
+		fi
+	done
+	IFS=$old_ifs
+fi
+
+if [ -z "$real_pi" ]; then
+	echo "pi wrapper: could not find the underlying pi executable" >&2
+	exit 127
+fi
+
+# Explicit session controls and Pi subcommands must pass through untouched.
+manage_session=1
+for arg in "$@"; do
+	case "$arg" in
+		--session|--session=*|--session-id|--session-id=*|--session-dir|--session-dir=*|--continue|-c|--resume|-r|--fork|--fork=*|--no-session|--help|-h|--version|-v|--list-models|install|remove|uninstall|update|list|config|auth)
+			manage_session=0
+			break
+			;;
+	esac
+done
+
+# Set either variable to intentionally start a fresh session.
+if [ "${PI_TODO_NEW_SESSION:-}" = "1" ] || [ "${PI_AUTO_RESUME:-1}" = "0" ]; then
+	manage_session=0
+fi
+
+launch_args=("$@")
+if [ "$manage_session" -eq 1 ]; then
+	# Resolve the nearest TODO.md and return:
+	#   root\nsession\n<id>       for a usable recorded session
+	#   root\nsession\n<id>       for the newest usable project session
+	#   root\nnew                when the project has no usable session yet
+	#   (no output)        when no TODO.md exists
+	metadata=$(python3 - "$PWD" <<'PY'
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+SESSION_ID = re.compile(r"^[A-Za-z0-9-]{8,128}$")
+ACTIVITY_TYPES = {"message", "custom_message", "compaction", "branch_summary"}
+
+
+def resolve_path(value: str, base: Path) -> Path:
+    path = Path(value).expanduser()
+    return path.resolve() if path.is_absolute() else (base / path).resolve()
+
+
+def read_header(path: Path):
+    try:
+        with path.open(encoding="utf-8") as handle:
+            value = json.loads(handle.readline())
+    except (OSError, UnicodeError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def has_activity(path: Path) -> bool:
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    value = json.loads(line)
+                except (UnicodeError, ValueError):
+                    continue
+                if isinstance(value, dict) and value.get("type") in ACTIVITY_TYPES:
+                    return True
+    except (OSError, UnicodeError):
+        return False
+    return False
+
+
+def usable_session(path: Path, expected_id: str, project_root: Path) -> bool:
+    if not SESSION_ID.fullmatch(expected_id) or not path.is_file():
+        return False
+    header = read_header(path)
+    if not header or header.get("id") != expected_id:
+        return False
+    header_cwd = header.get("cwd")
+    if not isinstance(header_cwd, str) or resolve_path(header_cwd, project_root) != project_root:
+        return False
+    return has_activity(path)
+
+
+def default_session_dir(project_root: Path) -> Path:
+    agent_dir = Path(os.environ.get("PI_CODING_AGENT_DIR", "~/.pi/agent")).expanduser().resolve()
+    safe_path = "--" + str(project_root).lstrip("/\\").replace("/", "-").replace("\\", "-").replace(":", "-") + "--"
+    return agent_dir / "sessions" / safe_path
+
+
+def newest_usable_session(project_root: Path):
+    configured_dir = os.environ.get("PI_CODING_AGENT_SESSION_DIR")
+    session_dir = resolve_path(configured_dir, project_root) if configured_dir else default_session_dir(project_root)
+    try:
+        candidates = sorted(session_dir.glob("*.jsonl"), key=lambda path: path.stat().st_mtime, reverse=True)
+    except OSError:
+        return None
+
+    for path in candidates:
+        header = read_header(path)
+        if not header:
+            continue
+        session_id = header.get("id")
+        if isinstance(session_id, str) and usable_session(path, session_id, project_root):
+            return session_id
+    return None
+
+
+cwd = Path(sys.argv[1]).resolve()
+directory = cwd
+while True:
+    todo = directory / "TODO.md"
+    if todo.is_file():
+        project_root = directory.resolve()
+        try:
+            text = todo.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            text = ""
+
+        id_match = re.search(r"^\s*-\s*Session ID:\s*`([^`]+)`\s*$", text, re.MULTILINE)
+        file_match = re.search(r"^\s*-\s*Session file:\s*`([^`]+)`\s*$", text, re.MULTILINE)
+        if id_match and file_match:
+            session_id = id_match.group(1).strip()
+            session_file = resolve_path(file_match.group(1).strip(), project_root)
+            if usable_session(session_file, session_id, project_root):
+                print(project_root)
+                print("session")
+                print(session_id)
+                break
+
+        fallback_id = newest_usable_session(project_root)
+        print(project_root)
+        if fallback_id:
+            print("session")
+            print(fallback_id)
+        else:
+            print("new")
+        break
+
+    parent = directory.parent
+    if parent == directory:
+        break
+    directory = parent
+PY
+)
+	if [ -n "$metadata" ]; then
+		project_root=$(printf '%s\n' "$metadata" | sed -n '1p')
+		mode=$(printf '%s\n' "$metadata" | sed -n '2p')
+		session_id=$(printf '%s\n' "$metadata" | sed -n '3p')
+
+		case "$mode" in
+			session)
+				launch_args=(--session "$session_id" "${launch_args[@]}")
+				cd "$project_root" || exit 1
+				;;
+			new)
+				# Keep a TODO-backed project rooted at the directory containing TODO.md.
+				cd "$project_root" || exit 1
+				;;
+		esac
+	fi
+fi
+
+"$real_pi" "${launch_args[@]}"
+exit $?
