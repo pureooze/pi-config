@@ -37,18 +37,18 @@ test("database opens lazily, applies metadata migration, configures pragmas, and
 
     const connection = database.open();
     assert.equal(database.isOpen, true);
-    assert.equal(database.getSchemaVersion(), 1);
+    assert.equal(database.getSchemaVersion(), 6);
     assert.equal(connection.prepare("PRAGMA foreign_keys").get().foreign_keys, 1);
     assert.equal(connection.prepare("PRAGMA journal_mode").get().journal_mode, "wal");
     assert.equal(connection.prepare("PRAGMA busy_timeout").get().timeout, 1000);
-    assert.equal(connection.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 1);
+    assert.equal(connection.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 6);
     assert.equal(connection.prepare("SELECT value FROM schema_meta WHERE key = ?").get("created_at").value, "1700000000000");
 
     database.close();
     database.close();
     assert.equal(database.isOpen, false);
     database.open();
-    assert.equal(database.getSchemaVersion(), 1);
+    assert.equal(database.getSchemaVersion(), 6);
     database.close();
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -62,26 +62,26 @@ test("migrations are ordered and create a verified pre-migration backup", () => 
     initial.open();
     initial.close();
 
-    const migrationTwo = migration(2, "add_migration_probe", (database) => {
+    const migrationSeven = migration(7, "add_migration_probe", (database) => {
       database.exec("CREATE TABLE migration_probe (value TEXT NOT NULL)");
       database.prepare("INSERT INTO migration_probe(value) VALUES (?)").run("version-two");
     });
-    const backupPath = join(config.backupDirectory, "migration-v1-v2.sqlite");
+    const backupPath = join(config.backupDirectory, "migration-v6-v7.sqlite");
     const upgraded = new KnowledgeGraphDatabase({
       paths: config,
       now: () => 1_700_000_000_100,
-      migrations: [...MVP_MIGRATIONS, migrationTwo],
+      migrations: [...MVP_MIGRATIONS, migrationSeven],
       backupPathFactory: () => backupPath,
     });
     const connection = upgraded.open();
-    assert.equal(upgraded.getSchemaVersion(), 2);
+    assert.equal(upgraded.getSchemaVersion(), 7);
     assert.equal(connection.prepare("SELECT value FROM migration_probe").get().value, "version-two");
     assert.equal(upgraded.lastMigrationBackupPath, backupPath);
     assert.equal(statSync(backupPath).mode & 0o777, 0o600);
 
     const backup = new DatabaseSync(backupPath);
-    assert.equal(backup.prepare("PRAGMA user_version").get().user_version, 1);
-    assert.equal(backup.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 1);
+    assert.equal(backup.prepare("PRAGMA user_version").get().user_version, 6);
+    assert.equal(backup.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 6);
     assert.throws(() => backup.prepare("SELECT * FROM migration_probe").all());
     backup.close();
     upgraded.close();
@@ -97,7 +97,7 @@ test("failed migrations roll back and leave the original schema recoverable", ()
     initial.open();
     initial.close();
 
-    const failedMigration = migration(2, "failed_probe", (database) => {
+    const failedMigration = migration(7, "failed_probe", (database) => {
       database.exec("CREATE TABLE failed_probe (value TEXT NOT NULL)");
       throw new Error("synthetic migration failure");
     });
@@ -111,7 +111,7 @@ test("failed migrations roll back and leave the original schema recoverable", ()
 
     const recovered = new KnowledgeGraphDatabase({ paths: config });
     const connection = recovered.open();
-    assert.equal(recovered.getSchemaVersion(), 1);
+    assert.equal(recovered.getSchemaVersion(), 6);
     assert.throws(() => connection.prepare("SELECT * FROM failed_probe").all());
     recovered.checkIntegrity();
     recovered.close();

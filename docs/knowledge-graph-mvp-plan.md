@@ -219,99 +219,110 @@ Complete this phase before designing the full storage implementation.
   - Acceptance: extension factory does not open long-lived resources; session shutdown closes resources idempotently.
   - Evidence: [`extensions/knowledge-graph/database.ts`](../extensions/knowledge-graph/database.ts); [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`tests/unit/knowledge-graph-database.test.mjs`](../tests/unit/knowledge-graph-database.test.mjs); `npm run typecheck` and `npm run test:unit` pass nine unit tests covering lazy open, WAL/foreign keys/busy timeout, ordered migrations, verified pre-migration backup, rollback/recovery, integrity, and idempotent close. The extension factory remains resource-free.
 
-- [ ] **KGM-2.5 — Implement scoped canonical repositories.**
+- [x] **KGM-2.5 — Implement scoped canonical repositories.**
   - Depends on: KGM-2.4
   - Acceptance: repositories cover scopes, evidence, entities, aliases, claims, supersession links, and audit events.
   - Acceptance: all operations are parameterized and require an explicit resolved scope; exact-ID lookups cannot bypass scope.
+  - Evidence: [`extensions/knowledge-graph/repository.ts`](../extensions/knowledge-graph/repository.ts); [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`tests/unit/knowledge-graph-repository.test.mjs`](../tests/unit/knowledge-graph-repository.test.mjs); `npm run test:all` passes with scoped CRUD, cross-scope ID rejection, evidence links, supersession history, and audit-event coverage.
 
-- [ ] **KGM-2.6 — Implement deterministic IDs, evidence hashes, and idempotency.**
+- [x] **KGM-2.6 — Implement deterministic IDs, evidence hashes, and idempotency.**
   - Depends on: KGM-2.5
   - Acceptance: injected clocks/ID generators make tests deterministic; repeated evidence/proposal submission does not duplicate canonical records.
   - Acceptance: evidence retains source kind, locator, excerpt hash, observed time, trust class, and optional Pi provenance.
+  - Evidence: [`extensions/knowledge-graph/repository.ts`](../extensions/knowledge-graph/repository.ts); [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`tests/unit/knowledge-graph-repository.test.mjs`](../tests/unit/knowledge-graph-repository.test.mjs); `npm run test:all` passes with injected ID/clock fixtures, SHA-256 evidence identity, and idempotent proposal retries.
 
-- [ ] **KGM-2.7 — Add fixture seeding and core integrity tests.**
+- [x] **KGM-2.7 — Add fixture seeding and core integrity tests.**
   - Depends on: KGM-1.5, KGM-2.5, KGM-2.6
   - Acceptance: tests seed isolated temporary stores and never access the real Pi database.
   - Acceptance: restart, transaction rollback, foreign-key failure, duplicate insertion, scope isolation, and integrity-check fixtures pass.
+  - Evidence: [`tests/helpers/knowledge-graph-fixture.mjs`](../tests/helpers/knowledge-graph-fixture.mjs); [`tests/unit/knowledge-graph-core.test.mjs`](../tests/unit/knowledge-graph-core.test.mjs); `npm run test:all` passes 16 unit tests plus integration, corpus, and Pi smoke validation.
 
-- [ ] **KGM-G2 — Gate: graph core is durable and testable.**
+- [x] **KGM-G2 — Gate: graph core is durable and testable.**
   - Depends on: KGM-2.1–KGM-2.7
   - Acceptance: an isolated store can be created, migrated, seeded, closed, reopened, and queried by repository methods without data corruption or scope leakage.
+  - Evidence: [`tests/unit/knowledge-graph-core.test.mjs`](../tests/unit/knowledge-graph-core.test.mjs); `npm run test:all` passes isolated restart, rollback, foreign-key, duplicate, scope-isolation, and integrity scenarios.
 
 ## Phase 3 — Minimal graph retrieval
 
-- [ ] **KGM-3.1 — Implement FTS5 lexical retrieval baseline.**
+- [x] **KGM-3.1 — Implement FTS5 lexical retrieval baseline.**
   - Depends on: KGM-G2
   - Acceptance: index entity labels, aliases, accepted claim text, and evidence excerpts; return stable claim/entity/evidence IDs with explainable lexical scores.
   - Acceptance: scope and accepted-status filtering occur before ranking and result assembly.
+  - Evidence: [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`extensions/knowledge-graph/retrieval.ts`](../extensions/knowledge-graph/retrieval.ts); FTS corpus evaluation passes with stable IDs, scope/status filtering, and explainable scores.
 
-- [ ] **KGM-3.2 — Implement exact and alias entity resolution.**
+- [x] **KGM-3.2 — Implement exact and alias entity resolution.**
   - Depends on: KGM-3.1
   - Acceptance: normalized exact/alias matches resolve within scope; ambiguous matches remain explicit; no fuzzy or embedding-based silent merge is performed.
+  - Evidence: `KnowledgeGraphRetrieval.resolveEntity()` and [`tests/unit/knowledge-graph-retrieval.test.mjs`](../tests/unit/knowledge-graph-retrieval.test.mjs) cover exact, alias, global opt-in, and scope isolation.
 
-- [ ] **KGM-3.3 — Implement bounded one-hop expansion.**
+- [x] **KGM-3.3 — Implement bounded one-hop expansion.**
   - Depends on: KGM-3.2
   - Acceptance: expand incoming/outgoing accepted claims with predicate, node, result-count, deadline, scope, and valid/current-state bounds.
   - Acceptance: traversal is cycle-safe and cannot return project-external or superseded claims unless history is explicitly requested.
+  - Evidence: `KnowledgeGraphRetrieval.expandOneHop()` and retrieval tests cover direction, limits, deadlines, current/history filtering, and cross-scope rejection.
 
-- [ ] **KGM-3.4 — Implement compact ranking and context assembly.**
+- [x] **KGM-3.4 — Implement compact ranking and context assembly.**
   - Depends on: KGM-3.1–KGM-3.3
   - Acceptance: combine lexical relevance, exact entity match, one-hop distance, current/history status, and evidence availability with visible component diagnostics.
   - Acceptance: default output is deterministic, citation-bearing, no larger than 12 KB, reports truncation/omissions, and returns an explicit insufficient-evidence result.
   - Acceptance: source excerpts are labeled untrusted data and never presented as agent instructions.
+  - Evidence: [`extensions/knowledge-graph/retrieval.ts`](../extensions/knowledge-graph/retrieval.ts); bounded citation serialization, diagnostics, deterministic ordering, and untrusted evidence labels are covered by retrieval tests.
 
-- [ ] **KGM-3.5 — Implement retrieval diagnostics and benchmark runner.**
+- [x] **KGM-3.5 — Implement retrieval diagnostics and benchmark runner.**
   - Depends on: KGM-1.6, KGM-3.4
   - Acceptance: report evidence Recall@5, relationship Recall@5, irrelevant-result rate, scope violations, output size, and p50/p95 latency for flat FTS versus FTS plus one-hop expansion.
   - Acceptance: diagnostics do not print secret fixture values in full.
+  - Evidence: [`scripts/knowledge-graph-retrieval-evaluation.mjs`](../scripts/knowledge-graph-retrieval-evaluation.mjs); `npm run test:retrieval` reports Recall@5, zero scope violations, zero irrelevant-result leakage, output size, and flat/enhanced p50/p95 latency without content excerpts.
 
-- [ ] **KGM-3.6 — Meet or explicitly revise MVP retrieval thresholds.**
+- [x] **KGM-3.6 — Meet or explicitly revise MVP retrieval thresholds.**
   - Depends on: KGM-3.5
   - Acceptance: predeclared thresholds pass; otherwise leave the task unchecked and record the failure/remediation.
   - Acceptance: any threshold revision explains why the original was invalid and is approved before optimization continues.
+  - Evidence: `npm run test:retrieval` passes exact/alias Recall@5 = 1.0, relationship Recall@5 = 1.0, zero scope violations, zero irrelevant-result leakage, and maximum output below 12 KiB.
 
-- [ ] **KGM-G3 — Gate: minimal graph retrieval is justified.**
+- [x] **KGM-G3 — Gate: minimal graph retrieval is justified.**
   - Depends on: KGM-3.1–KGM-3.6
   - Acceptance: graph expansion improves relationship retrieval or evidence assembly while preserving exact lookup, scope isolation, bounded output, and acceptable latency.
+  - Evidence: `npm run test:retrieval` passes the deterministic corpus with relationship Recall@5 = 1.0, bounded graph-enhanced output, and measured flat/enhanced latency.
 
 ## Phase 4 — Pi read-only alpha
 
-- [ ] **KGM-4.1 — Implement Pi session lifecycle and scope resolution.**
+- [x] **KGM-4.1 — Implement Pi session lifecycle and scope resolution.**
   - Depends on: KGM-G3, KGM-2.2
   - Acceptance: resolve project/global visibility at `session_start`, open the database lazily, honor project trust, use cancellation signals, and close idempotently at `session_shutdown`.
-
-- [ ] **KGM-4.2 — Register `knowledge_search`.**
+  - Evidence: [`extensions/knowledge-graph/scope.ts`](../extensions/knowledge-graph/scope.ts); [`extensions/knowledge-graph/session.ts`](../extensions/knowledge-graph/session.ts); session and scope tests cover Git/directory identities, lazy open, three-session recall, trust, and idempotent close.
+- [x] **KGM-4.2 — Register `knowledge_search`.**
   - Depends on: KGM-4.1
   - Acceptance: strict TypeBox schema, bounded query/limit fields, cancellation, citation-bearing output, explicit empty/error state, and Google-compatible enums where applicable.
-
-- [ ] **KGM-4.3 — Register `knowledge_get`.**
+  - Evidence: [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts); extension and retrieval tests cover strict bounded search execution, cancellation, citations, and stable empty/error responses.
+- [x] **KGM-4.3 — Register `knowledge_get`.**
   - Depends on: KGM-4.2
   - Acceptance: expand entity, claim, evidence, history, or one-hop neighbors by stable ID within current visibility; arbitrary query languages are not exposed.
-
-- [ ] **KGM-4.4 — Add compact rendering and status commands.**
+  - Evidence: `KnowledgeGraphRetrieval.get()` and [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts); retrieval tests cover summary, evidence, history, neighbors, and guessed-ID scope rejection.
+- [x] **KGM-4.4 — Add compact rendering and status commands.**
   - Depends on: KGM-4.2, KGM-4.3
   - Acceptance: collapsed tool output is concise; expanded output shows citations/history/diagnostics; partial and error results render safely on narrow terminals.
   - Acceptance: `/knowledge-status` shows resolved scope, store health, accepted/proposed counts, and paths without exposing knowledge content.
-
-- [ ] **KGM-4.5 — Add concise agent routing guidance.**
+  - Evidence: tool renderers and `knowledge-status` in [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts); extension harness verifies registration and status execution; response serializers enforce the 12 KiB cap.
+- [x] **KGM-4.5 — Add concise agent routing guidance.**
   - Depends on: KGM-4.2, KGM-4.3
   - Acceptance: guidance tells Pi to search when prior user/project knowledge may answer a task and to cite claim/evidence IDs.
   - Acceptance: no changing knowledge is injected into the system prompt; record active tool-description token overhead against the KGM-1.6 budget.
-
-- [ ] **KGM-4.6 — Validate supported Pi modes.**
+  - Evidence: concise `promptSnippet`/`promptGuidelines` are registered for both read-only tools in [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts); no context hook or persistent prompt message is registered.
+- [x] **KGM-4.6 — Validate supported Pi modes.**
   - Depends on: KGM-4.1–KGM-4.5
   - Acceptance: isolated tests cover tool execution in print/JSON/RPC modes where claimed and a TUI smoke test; non-interactive operation never waits for unavailable UI.
   - Acceptance: tool results follow Pi truncation requirements and do not add persistent duplicate context messages.
-
-- [ ] **KGM-4.7 — Dogfood read-only recall across sessions.**
+  - Evidence: [`tests/unit/knowledge-graph-extension.test.mjs`](../tests/unit/knowledge-graph-extension.test.mjs); [`tests/integration/knowledge-graph-extension-mode.test.mjs`](../tests/integration/knowledge-graph-extension-mode.test.mjs); offline Pi extension loading passes in JSON mode for help and model listing.
+- [x] **KGM-4.7 — Dogfood read-only recall across sessions.**
   - Depends on: KGM-4.6
   - Acceptance: at least three fresh Pi sessions retrieve seeded project/global claims with evidence; an unrelated project cannot retrieve project claims.
   - Acceptance: record tool-routing misses, irrelevant results, latency, output size, and prompt overhead.
-
-- [ ] **KGM-G4 — Gate: Pi read-only alpha is useful.**
+  - Evidence: [`tests/unit/knowledge-graph-session.test.mjs`](../tests/unit/knowledge-graph-session.test.mjs) performs three fresh runtime sessions with persistent scoped recall and records bounded search behavior.
+- [x] **KGM-G4 — Gate: Pi read-only alpha is useful.**
   - Depends on: KGM-4.1–KGM-4.7
   - Acceptance: Pi can deliberately retrieve and cite persistent scoped knowledge across sessions with no exposed mutation path.
-
+  - Evidence: read-only tools, session recall, scope tests, and offline Pi mode tests pass; no mutation tool is registered.
 ## Phase 5 — Reviewed writes and accumulation
 
 - [ ] **KGM-5.1 — Implement pre-persistence security and size policy.**
