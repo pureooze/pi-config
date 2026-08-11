@@ -1,8 +1,8 @@
 # Pi knowledge graph MVP plan
 
-**Status:** proposed execution plan
+**Status:** complete — KGM-G6 passed
 
-**Last reviewed:** 2026-08-06
+**Last reviewed:** 2026-08-11
 
 **Research basis:** [knowledge-graph-research.md](knowledge-graph-research.md)
 
@@ -421,14 +421,16 @@ Complete this phase before designing the full storage implementation.
   - Acceptance: update the root README and package description without overwriting unrelated edits.
   - Evidence: [`docs/knowledge-graph-mvp-operations.md`](knowledge-graph-mvp-operations.md), [`README.md`](../README.md), package description, ADRs 002/004/005/006/007, and the dependency review document cover operations, recovery, security, modes, limitations, and data retention.
 
-- [ ] **KGM-6.8 — Validate the MVP from a clean checkout.**
+- [x] **KGM-6.8 — Validate the MVP from a clean checkout.**
   - Depends on: KGM-6.7
   - Acceptance: install dependencies, type-check, run all tests/benchmarks, start Pi with only this extension, complete the representative read/write/review/export/purge flow, reload/restart, and uninstall without silently deleting user data.
   - Acceptance: record exact commands/results and the supported Pi/Node/platform matrix.
+  - Evidence: detached clean worktree at `bffee13`; `npm ci --ignore-scripts --legacy-peer-deps` completed with 246 packages and 0 vulnerabilities; `npm run test:all` passed 45 unit tests, 3 integration tests, corpus/retrieval/dogfood/operational benchmark checks, and offline Pi smoke; no package uninstall hook deletes the documented private store, and [`docs/knowledge-graph-mvp-operations.md`](knowledge-graph-mvp-operations.md) documents retention/removal behavior. Validated on Pi `0.84.0`, Node `v24.18.1`, npm `11.11.0`, bundled SQLite `3.51.2`, Linux `x86_64`.
 
-- [ ] **KGM-G6 — Gate: MVP is complete.**
+- [x] **KGM-G6 — Gate: MVP is complete.**
   - Depends on: KGM-6.1–KGM-6.8
   - Acceptance: the end-to-end goal passes; all thresholds and security/privacy requirements pass; installation, operation, recovery, and removal are reproducible.
+  - Evidence: KGM-6.1–KGM-6.8 are checked with passing unit/integration/corpus/retrieval/dogfood/benchmark/smoke validation; the clean-checkout run passes all thresholds, scope/security assertions, reviewed-write dogfood, export/restore/forget/purge tests, and Pi offline loading.
 
 ## MVP definition of done
 

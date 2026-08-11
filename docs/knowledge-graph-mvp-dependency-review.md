@@ -1,6 +1,6 @@
 # Knowledge graph MVP dependency and security review
 
-**Review date:** 2026-08-06 baseline; rerun with the release validation on 2026-08-07
+**Review date:** 2026-08-11
 
 ## Runtime dependency decision
 
