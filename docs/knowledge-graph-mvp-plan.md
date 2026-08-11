@@ -217,7 +217,7 @@ Complete this phase before designing the full storage implementation.
   - Depends on: KGM-2.3
   - Acceptance: lazy open, schema versioning, transactional ordered migrations, foreign keys, selected journaling/locking settings, integrity checks, and idempotent close are tested.
   - Acceptance: extension factory does not open long-lived resources; session shutdown closes resources idempotently.
-  - Evidence: [`extensions/knowledge-graph/database.ts`](../extensions/knowledge-graph/database.ts); [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`tests/unit/knowledge-graph-database.test.mjs`](../tests/unit/knowledge-graph-database.test.mjs); `npm run typecheck` and `npm run test:unit` pass nine unit tests covering lazy open, WAL/foreign keys/busy timeout, ordered migrations, verified pre-migration backup, rollback/recovery, integrity, and idempotent close. The extension factory remains resource-free.
+  - Evidence: [`extensions/knowledge-graph/database.ts`](../extensions/knowledge-graph/database.ts); [`extensions/knowledge-graph/migrations.ts`](../extensions/knowledge-graph/migrations.ts); [`tests/unit/knowledge-graph-database.test.mjs`](../tests/unit/knowledge-graph-database.test.mjs); `npm run typecheck` and `npm run test:unit` pass migration/lifecycle coverage for lazy open, WAL/foreign keys/busy timeout, ordered migrations, verified pre-migration backup, rollback/recovery, integrity, and idempotent close. The extension factory remains resource-free.
 
 - [x] **KGM-2.5 — Implement scoped canonical repositories.**
   - Depends on: KGM-2.4
@@ -366,7 +366,7 @@ Complete this phase before designing the full storage implementation.
 - [x] **KGM-5.7 — Add end-to-end write/security tests.**
   - Depends on: KGM-5.1–KGM-5.6
   - Acceptance: explicit remember request, inferred proposal, accept, edit, reject, cancellation, duplicate proposal, correction, supersession, secret rejection, guessed-ID scope attack, malformed input, and concurrent review all pass.
-  - Evidence: [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs), [`tests/unit/knowledge-graph-extension.test.mjs`](../tests/unit/knowledge-graph-extension.test.mjs), and retrieval/security suites; `npm run test:all` passes 39 unit tests plus integration, corpus, retrieval, and Pi smoke validation.
+  - Evidence: [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs), [`tests/unit/knowledge-graph-extension.test.mjs`](../tests/unit/knowledge-graph-extension.test.mjs), and retrieval/security suites; `npm run test:all` passes 45 unit tests plus integration, corpus, retrieval, dogfood, benchmark, and Pi smoke validation.
 
 - [x] **KGM-5.8 — Dogfood accumulation over multiple sessions.**
   - Depends on: KGM-5.7
@@ -393,28 +393,33 @@ Complete this phase before designing the full storage implementation.
   - Acceptance: purging removes derived FTS data and leaves no content in extension telemetry/logs; shared evidence handling is explicit and tested.
   - Evidence: [`extensions/knowledge-graph/deletion.ts`](../extensions/knowledge-graph/deletion.ts), [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), and maintenance/extension tests; `npm run test:all` verifies bounded previews, explicit confirmation/cancellation, scope isolation, FTS cleanup, retained redacted audits, and shared-evidence fail-closed behavior.
 
-- [ ] **KGM-6.3 — Complete migration, crash, and concurrent-process tests.**
+- [x] **KGM-6.3 — Complete migration, crash, and concurrent-process tests.**
   - Depends on: KGM-2.4, KGM-5.6, KGM-6.1
   - Acceptance: interrupted writes do not partially commit; upgrades preserve fixtures; failed migration has a documented recovery path; two Pi processes cannot lose accepted updates.
+  - Evidence: [`tests/unit/knowledge-graph-core.test.mjs`](../tests/unit/knowledge-graph-core.test.mjs), [`tests/unit/knowledge-graph-database.test.mjs`](../tests/unit/knowledge-graph-database.test.mjs), and [`tests/unit/knowledge-graph-concurrency.test.mjs`](../tests/unit/knowledge-graph-concurrency.test.mjs); transaction rollback, schema-upgrade fixture preservation, verified pre-upgrade backup, failed-migration recovery, and two concurrent Node review workers pass under `npm run test:all`.
 
-- [ ] **KGM-6.4 — Complete prompt-injection, scope, path, and resource-exhaustion tests.**
+- [x] **KGM-6.4 — Complete prompt-injection, scope, path, and resource-exhaustion tests.**
   - Depends on: KGM-3.4, KGM-5.7, KGM-6.2
   - Acceptance: malicious evidence remains untrusted data; all exact/search/neighbor/review/export/delete paths enforce scope; SQL/path traversal, symlinks, oversized input, high-degree nodes, deadlines, and cancellation are covered.
+  - Evidence: [`tests/unit/knowledge-graph-hardening.test.mjs`](../tests/unit/knowledge-graph-hardening.test.mjs), retrieval/security/config/maintenance suites, and [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts) (no `before_tree` handler); prompt-injection, scope, private-path, oversized-input, high-degree, cancellation/deadline, and bounded-output assertions pass under `npm run test:all`.
 
-- [ ] **KGM-6.5 — Run final quality and operational benchmarks.**
+- [x] **KGM-6.5 — Run final quality and operational benchmarks.**
   - Depends on: KGM-3.6, KGM-4.7, KGM-5.8, KGM-6.3, KGM-6.4
   - Acceptance: rerun retrieval thresholds and report startup overhead, p50/p95 search/write latency, 10,000-claim database size, output size, tool-schema tokens, and review completion time.
   - Acceptance: failures remain visible and block release unless thresholds are explicitly revised with rationale.
+  - Evidence: [`scripts/knowledge-graph-operational-benchmark.mjs`](../scripts/knowledge-graph-operational-benchmark.mjs) and [`scripts/knowledge-graph-retrieval-evaluation.mjs`](../scripts/knowledge-graph-retrieval-evaluation.mjs); `npm run test:benchmark` and `npm run test:retrieval` pass with 10,030 claims, search 48.7/58.1 ms p50/p95, reviewed writes 39.3/49.6 ms p50/p95, startup 1.6/1.9 ms p50/p95, 33.5 MB database, 5,702-byte output, 1,413 estimated schema tokens, Recall@5 = 1.0, and zero scope violations.
 
-- [ ] **KGM-6.6 — Review dependencies, licenses, and extension security.**
+- [x] **KGM-6.6 — Review dependencies, licenses, and extension security.**
   - Depends on: KGM-6.5
   - Acceptance: record every dependency’s purpose, license, install scripts, native binaries, network behavior, and update policy; remove unjustified dependencies.
   - Acceptance: review strict typing, runtime validation, lifecycle cleanup, bounded outputs, database transactions, permissions, and secret/log handling.
+  - Evidence: [`docs/knowledge-graph-mvp-dependency-review.md`](knowledge-graph-mvp-dependency-review.md), `package.json`, `package-lock.json`, `npm ls --depth=0 --omit=optional`, `npm run typecheck`, and `npm run test:all`; no knowledge-graph runtime dependency, install script, network path, or native SQLite binding was added.
 
-- [ ] **KGM-6.7 — Write MVP user, operator, and architecture documentation.**
+- [x] **KGM-6.7 — Write MVP user, operator, and architecture documentation.**
   - Depends on: KGM-6.1–KGM-6.6
   - Acceptance: document install, configuration, paths/permissions, scopes, search, proposal/review, correction, history, export/restore, forget/purge, health, migration recovery, mode behavior, known limitations, and uninstall data retention.
   - Acceptance: update the root README and package description without overwriting unrelated edits.
+  - Evidence: [`docs/knowledge-graph-mvp-operations.md`](knowledge-graph-mvp-operations.md), [`README.md`](../README.md), package description, ADRs 002/004/005/006/007, and the dependency review document cover operations, recovery, security, modes, limitations, and data retention.
 
 - [ ] **KGM-6.8 — Validate the MVP from a clean checkout.**
   - Depends on: KGM-6.7
