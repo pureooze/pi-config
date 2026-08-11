@@ -1,8 +1,9 @@
 import { chmodSync, lstatSync, writeFileSync } from "node:fs";
-import type { DatabaseSync } from "node:sqlite";
+import { DatabaseSync } from "node:sqlite";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import {
   assertPrivateFile,
+  assertPrivateDirectory,
   ensurePrivateDirectory,
   type StoragePaths,
 } from "./config.ts";
@@ -194,8 +195,27 @@ export class KnowledgeGraphMaintenance {
     return target;
   }
 
+  writeBackup(filename: string): string {
+    const safeName = validateBackupName(filename);
+    const paths = this.storagePaths();
+    ensurePrivateDirectory(paths.backupDirectory);
+    const target = resolve(paths.backupDirectory, safeName);
+    if (dirname(target) !== resolve(paths.backupDirectory) || basename(target) !== safeName || pathExists(target)) {
+      throw new KnowledgeGraphMaintenanceError(pathExists(target) ? "export_exists" : "invalid_export_name", "Backup destination is invalid or already exists.");
+    }
+    const escapedPath = target.replaceAll("'", "''");
+    this.database.exec(`VACUUM INTO '${escapedPath}'`);
+    chmodSync(target, 0o600);
+    assertPrivateFile(target);
+    verifyBackup(target);
+    return target;
+  }
+
   restoreSnapshot(snapshot: unknown): void {
     assertSnapshot(snapshot);
+    if (snapshot.schemaVersion !== this.schemaVersion()) {
+      throw new KnowledgeGraphMaintenanceError("invalid_snapshot", "Snapshot schema version does not match the empty store.");
+    }
     if (this.hasCanonicalRows()) {
       throw new KnowledgeGraphMaintenanceError("restore_not_empty", "Restore requires an empty canonical knowledge-graph store.");
     }
@@ -344,6 +364,29 @@ function validateExportName(filename: string): string {
     throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Export filename must be a simple private JSON filename.");
   }
   return filename;
+}
+
+function validateBackupName(filename: string): string {
+  if (typeof filename !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,62}\.sqlite$/u.test(filename) || filename.includes("..")) {
+    throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Backup filename must be a simple private SQLite filename.");
+  }
+  return filename;
+}
+
+function verifyBackup(path: string): void {
+  const backup = new DatabaseSync(path);
+  try {
+    backup.exec("PRAGMA foreign_keys = ON;");
+    const integrity = backup.prepare("PRAGMA integrity_check").get();
+    if (!isRecord(integrity) || integrity.integrity_check !== "ok") {
+      throw new KnowledgeGraphMaintenanceError("storage_error", "Backup integrity verification failed.");
+    }
+    if (backup.prepare("PRAGMA foreign_key_check").all().length > 0) {
+      throw new KnowledgeGraphMaintenanceError("storage_error", "Backup foreign-key verification failed.");
+    }
+  } finally {
+    backup.close();
+  }
 }
 
 function pathExists(path: string): boolean {

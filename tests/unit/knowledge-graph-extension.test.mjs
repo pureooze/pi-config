@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -22,7 +22,7 @@ function extensionHarness() {
   };
 }
 
-test("knowledge graph extension registers read-only tools and lifecycle-safe status", async () => {
+test("knowledge graph extension registers scoped tools and lifecycle-safe maintenance commands", async () => {
   const storageRoot = mkdtempSync(join(tmpdir(), "pi-knowledge-graph-extension-test-"));
   const previousStorageRoot = process.env.PI_KNOWLEDGE_GRAPH_DIR;
   process.env.PI_KNOWLEDGE_GRAPH_DIR = join(storageRoot, "store");
@@ -30,9 +30,10 @@ test("knowledge graph extension registers read-only tools and lifecycle-safe sta
     const harness = extensionHarness();
     installKnowledgeGraphExtension(harness.api);
     assert.deepEqual([...harness.tools.keys()].sort(), ["knowledge_get", "knowledge_propose", "knowledge_search"]);
-    assert.equal(harness.commands.has("knowledge-status"), true);
+    assert.deepEqual([...harness.commands.keys()].sort(), ["knowledge-export", "knowledge-forget", "knowledge-review", "knowledge-status"]);
     assert.equal(harness.handlers.has("session_start"), true);
     assert.equal(harness.handlers.has("session_shutdown"), true);
+    assert.equal(harness.handlers.has("before_tree"), false);
 
     const notifications = [];
     const reviewChoices = ["Edit", "Accept"];
@@ -43,6 +44,7 @@ test("knowledge graph extension registers read-only tools and lifecycle-safe sta
       ui: {
         notify(message) { notifications.push(message); },
         select: async () => reviewChoices.shift(),
+        confirm: async () => true,
         editor: async () => "The corrected extension fixture is pending review.",
       },
       sessionManager: { getSessionId: () => "extension-session", getLeafId: () => "extension-leaf" },
@@ -69,12 +71,60 @@ test("knowledge graph extension registers read-only tools and lifecycle-safe sta
       undefined,
       context,
     );
-    const proposalId = JSON.parse(proposal.content[0].text).proposalId;
-    assert.equal(JSON.parse(proposal.content[0].text).status, "pending");
+    const proposalPayload = JSON.parse(proposal.content[0].text);
+    const proposalId = proposalPayload.proposalId;
+    const claimId = proposalPayload.claimIds[0];
+    assert.equal(proposalPayload.status, "pending");
     await harness.commands.get("knowledge-review").handler(proposalId, context);
     await harness.commands.get("knowledge-review").handler(proposalId, context);
     assert.equal(notifications.some((message) => message.includes("untrusted") && message.includes("pending review")), true);
     assert.equal(notifications.some((message) => message.includes("Decision: accepted")), true);
+
+    const globalProposal = await harness.tools.get("knowledge_propose").execute(
+      "global-proposal-call",
+      {
+        scope: "global",
+        subject: { label: "Global Extension Fact", type: "concept" },
+        predicate: "has_note",
+        object: { kind: "text", value: "global review fixture" },
+        evidence: [{ sourceKind: "user_statement", excerpt: "The global extension fact is reviewable." }],
+      },
+      new AbortController().signal,
+      undefined,
+      context,
+    );
+    const globalProposalId = JSON.parse(globalProposal.content[0].text).proposalId;
+    reviewChoices.push("Accept");
+    await harness.commands.get("knowledge-review").handler(`global ${globalProposalId}`, context);
+    assert.equal(notifications.some((message) => message.includes("Decision: accepted")), true);
+
+    await harness.commands.get("knowledge-export").handler("extension-export.json all", context);
+    assert.equal(existsSync(join(storageRoot, "store", "exports", "extension-export.json")), true);
+
+    const pendingProposal = await harness.tools.get("knowledge_propose").execute(
+      "pending-proposal-call",
+      {
+        subject: { label: "Noninteractive Fixture", type: "concept" },
+        predicate: "has_note",
+        object: { kind: "text", value: "must remain pending" },
+        evidence: [{ sourceKind: "user_statement", excerpt: "This fixture must remain pending." }],
+      },
+      new AbortController().signal,
+      undefined,
+      context,
+    );
+    const pendingClaimId = JSON.parse(pendingProposal.content[0].text).claimIds[0];
+    context.hasUI = false;
+    await harness.commands.get("knowledge-forget").handler(pendingClaimId, context);
+    assert.equal(notifications.some((message) => message.includes("no knowledge was deleted")), true);
+    context.hasUI = true;
+    context.ui.confirm = async () => false;
+    await harness.commands.get("knowledge-forget").handler(pendingClaimId, context);
+    assert.equal(notifications.some((message) => message.includes("deletion cancelled")), true);
+    context.ui.confirm = async () => true;
+
+    await harness.commands.get("knowledge-forget").handler(claimId, context);
+    assert.equal(notifications.some((message) => message.includes("Knowledge deletion complete")), true);
     await harness.commands.get("knowledge-status").handler("", context);
     await harness.handlers.get("session_shutdown")({ type: "session_shutdown", reason: "quit" }, context);
   } finally {

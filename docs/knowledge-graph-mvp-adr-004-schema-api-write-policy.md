@@ -247,6 +247,10 @@ Print and JSON modes may submit a pending proposal if policy and input validatio
 
 Every mutation is transactional. Cancellation before commit leaves no partial accepted/candidate graph. Busy/locked storage errors are normalized to a bounded retry or stable error. Tool output errors use stable categories such as `invalid_input`, `scope_unavailable`, `not_found`, `busy`, `storage_unavailable`, `secret_detected`, `proposal_pending`, and `output_truncated`; raw SQL, filesystem, and secret values are not returned.
 
+### Secret-scan override decision
+
+The MVP does **not** provide a user override for a secret-scan finding. A false positive is rejected before persistence and can be resubmitted only after the evidence is redacted or materially changed. This favors preventing accidental credential persistence over convenience; a future override, if justified, must be a separately audited user action with a new ADR.
+
 ## Consequences
 
 - The initial schema includes workflow/proposal state in addition to canonical graph rows, but accepted retrieval remains simple and status-filtered.

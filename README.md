@@ -7,6 +7,7 @@ Git-managed Pi customizations.
 - [`ask-user.ts`](extensions/ask-user.ts) provides the interactive `ask_user` tool.
 - [`telemetry`](extensions/telemetry) records operation, turn, model, token, and cost metrics described below.
 - [`todo-session.ts`](extensions/todo-session.ts) records the last useful Pi session in the nearest project `TODO.md`.
+- [`extensions/knowledge-graph/index.ts`](extensions/knowledge-graph/index.ts) provides scoped, evidence-backed search, reviewed proposals, correction/history, export, and explicit forget/purge workflows. See [`docs/knowledge-graph-mvp-operations.md`](docs/knowledge-graph-mvp-operations.md).
 - [`scripts/pi-auto-resume`](scripts/pi-auto-resume) is the launcher used by `pi` to resume that recorded session, including when started from a project subdirectory.
 
 Pi loads this checkout directly as a local package, so edits here take effect after `/reload` (or after restarting Pi).

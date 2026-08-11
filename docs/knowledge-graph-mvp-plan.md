@@ -325,62 +325,73 @@ Complete this phase before designing the full storage implementation.
   - Evidence: read-only tools, session recall, scope tests, and offline Pi mode tests pass; no mutation tool is registered.
 ## Phase 5 — Reviewed writes and accumulation
 
-- [ ] **KGM-5.1 — Implement pre-persistence security and size policy.**
+- [x] **KGM-5.1 — Implement pre-persistence security and size policy.**
   - Depends on: KGM-1.7, KGM-G2
   - Acceptance: validate candidate/evidence lengths and counts; block common credentials, private keys, and tokens before writing evidence or proposals.
   - Acceptance: findings never echo full secret values; policy has deterministic adversarial fixtures and an explicit user override decision from the ADR.
+  - Evidence: [`extensions/knowledge-graph/security.ts`](../extensions/knowledge-graph/security.ts), [`extensions/knowledge-graph/proposal.ts`](../extensions/knowledge-graph/proposal.ts), and [`docs/knowledge-graph-mvp-adr-004-schema-api-write-policy.md`](knowledge-graph-mvp-adr-004-schema-api-write-policy.md); `npm run test:unit` passes pre-persistence secret rejection, bounded input, prompt-injection, and redacted-error tests; MVP explicitly rejects scanner overrides.
 
-- [ ] **KGM-5.2 — Implement `knowledge_propose`.**
+- [x] **KGM-5.2 — Implement `knowledge_propose`.**
   - Depends on: KGM-G4, KGM-5.1
   - Acceptance: strict schema submits entities, aliases, directed claims, optional validity, and evidence; deterministic normalization rejects malformed predicates/types/IDs.
   - Acceptance: attach resolved scope, evidence hash, source trust, Pi session ID, tool-call ID, and branch leaf where available.
   - Acceptance: duplicate submission is idempotent and returns the existing proposal reference.
+  - Evidence: [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), [`extensions/knowledge-graph/proposal.ts`](../extensions/knowledge-graph/proposal.ts), and [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs); `npm run test:unit` passes pending, normalization, provenance, idempotency, scope, and malformed-input coverage.
 
-- [ ] **KGM-5.3 — Implement inline confirmation and non-interactive policy.**
+- [x] **KGM-5.3 — Implement inline confirmation and non-interactive policy.**
   - Depends on: KGM-5.2
   - Acceptance: TUI/RPC users see a concise evidence-bearing preview during explicit `/knowledge-review`; `knowledge_propose` itself always remains pending. Cancellation leaves a pending proposal or no mutation according to the ADR.
   - Acceptance: print/JSON modes may create a pending proposal only if policy permits; they never report it as accepted or block waiting for UI.
+  - Evidence: `/knowledge-review` requires `ctx.hasUI`, `knowledge_propose` returns `pending` without opening a confirmation dialog, and `tests/unit/knowledge-graph-extension.test.mjs` covers cancellation/non-interactive deletion safety; `npm run test:all` passes.
 
-- [ ] **KGM-5.4 — Implement `/knowledge-review`.**
+- [x] **KGM-5.4 — Implement `/knowledge-review`.**
   - Depends on: KGM-5.2, KGM-5.3
   - Acceptance: list pending proposals in current visibility and allow accept, edit, reject, or cancel with evidence shown.
   - Acceptance: editing preserves the original proposal/evidence and records the user correction as new evidence rather than rewriting source history.
   - Acceptance: each decision is transactional and records an audit event; command degrades safely outside TUI/RPC.
+  - Evidence: [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), [`extensions/knowledge-graph/repository.ts`](../extensions/knowledge-graph/repository.ts), and proposal/extension tests; current-project and explicit-global review, edit, accept, reject, cancel, audit, and non-UI behavior pass under `npm run test:unit`.
 
-- [ ] **KGM-5.5 — Implement correction and supersession.**
+- [x] **KGM-5.5 — Implement correction and supersession.**
   - Depends on: KGM-5.4
   - Acceptance: accepting a correction can set prior claim `valid_to`, mark it superseded, and link the replacement without deleting history.
   - Acceptance: current retrieval excludes superseded claims by default; history retrieval returns both with evidence and dates.
+  - Evidence: [`extensions/knowledge-graph/proposal.ts`](../extensions/knowledge-graph/proposal.ts), repository supersession transaction, and [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs); `npm run test:unit` verifies replacement links, prior `valid_to`, retained evidence/history, and current retrieval exclusion.
 
-- [ ] **KGM-5.6 — Preserve truthful Pi branch and concurrency provenance.**
+- [x] **KGM-5.6 — Preserve truthful Pi branch and concurrency provenance.**
   - Depends on: KGM-5.2–KGM-5.5
   - Acceptance: audit records include session/project/tool/branch references; `/tree`, fork, and resume never imply accepted external graph writes were reverted.
   - Acceptance: concurrent proposal/review conflicts fail or retry according to the storage ADR without lost updates.
+  - Evidence: proposal/evidence/audit records retain session, entry, tool, and branch fields; the extension registers no `before_tree` rollback handler; [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs) verifies provenance and a second reviewer cannot overwrite an accepted proposal.
 
-- [ ] **KGM-5.7 — Add end-to-end write/security tests.**
+- [x] **KGM-5.7 — Add end-to-end write/security tests.**
   - Depends on: KGM-5.1–KGM-5.6
   - Acceptance: explicit remember request, inferred proposal, accept, edit, reject, cancellation, duplicate proposal, correction, supersession, secret rejection, guessed-ID scope attack, malformed input, and concurrent review all pass.
+  - Evidence: [`tests/unit/knowledge-graph-proposal.test.mjs`](../tests/unit/knowledge-graph-proposal.test.mjs), [`tests/unit/knowledge-graph-extension.test.mjs`](../tests/unit/knowledge-graph-extension.test.mjs), and retrieval/security suites; `npm run test:all` passes 39 unit tests plus integration, corpus, retrieval, and Pi smoke validation.
 
-- [ ] **KGM-5.8 — Dogfood accumulation over multiple sessions.**
+- [x] **KGM-5.8 — Dogfood accumulation over multiple sessions.**
   - Depends on: KGM-5.7
   - Acceptance: complete the end-to-end scenario in this document over at least three fresh sessions and two projects.
   - Acceptance: record false captures, review friction, routing misses, retrieval quality, and whether users can understand why each claim is stored.
+  - Evidence: [`scripts/knowledge-graph-write-dogfood.mjs`](../scripts/knowledge-graph-write-dogfood.mjs); `npm run test:dogfood` passes five fresh sessions across two project scopes, two explicit review decisions, cross-project isolation, corrected recall, and retained superseded history. The report records review-required and recall/isolation observations without printing evidence excerpts.
 
-- [ ] **KGM-G5 — Gate: Pi safely builds knowledge over time.**
+- [x] **KGM-G5 — Gate: Pi safely builds knowledge over time.**
   - Depends on: KGM-5.1–KGM-5.8
   - Acceptance: every accepted claim has evidence and review/audit provenance; no inferred or untrusted content silently becomes accepted knowledge.
+  - Evidence: proposal/review transactions, provenance assertions, secret rejection, scoped deletion, and `npm run test:dogfood` all pass; agent candidates remain pending until explicit user review.
 
 ## Phase 6 — Privacy, reliability, measurement, and release
 
-- [ ] **KGM-6.1 — Implement deterministic export, backup, and restore.**
+- [x] **KGM-6.1 — Implement deterministic export, backup, and restore.**
   - Depends on: KGM-G5
   - Acceptance: export canonical records without FTS/derived indexes; output is stable and round-trips into an empty temporary store.
   - Acceptance: backups and restores preserve permissions, schema version, scopes, evidence, claim history, and audit events.
+  - Evidence: [`extensions/knowledge-graph/maintenance.ts`](../extensions/knowledge-graph/maintenance.ts), [`tests/unit/knowledge-graph-maintenance.test.mjs`](../tests/unit/knowledge-graph-maintenance.test.mjs); `npm run test:unit` verifies deterministic FTS-free export, private verified SQLite backup, schema-checked transactional restore, permissions, scope/history/evidence/audit round-trip.
 
-- [ ] **KGM-6.2 — Implement inspect, forget, and purge workflows.**
+- [x] **KGM-6.2 — Implement inspect, forget, and purge workflows.**
   - Depends on: KGM-6.1
   - Acceptance: preview affected claims/entities/evidence/index rows; require confirmation for destructive actions; distinguish supersession from physical deletion.
   - Acceptance: purging removes derived FTS data and leaves no content in extension telemetry/logs; shared evidence handling is explicit and tested.
+  - Evidence: [`extensions/knowledge-graph/deletion.ts`](../extensions/knowledge-graph/deletion.ts), [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), and maintenance/extension tests; `npm run test:all` verifies bounded previews, explicit confirmation/cancellation, scope isolation, FTS cleanup, retained redacted audits, and shared-evidence fail-closed behavior.
 
 - [ ] **KGM-6.3 — Complete migration, crash, and concurrent-process tests.**
   - Depends on: KGM-2.4, KGM-5.6, KGM-6.1

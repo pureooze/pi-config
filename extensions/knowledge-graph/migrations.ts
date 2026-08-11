@@ -417,6 +417,145 @@ export const MVP_MIGRATIONS: readonly KnowledgeGraphMigration[] = Object.freeze(
       `);
     },
   },
+  {
+    version: 7,
+    name: "search_visibility_index",
+    up(database) {
+      database.exec(`
+        CREATE TABLE search_visibility (
+          doc_key TEXT PRIMARY KEY,
+          scope_id TEXT NOT NULL,
+          record_kind TEXT NOT NULL CHECK (record_kind IN ('entity', 'alias', 'evidence', 'claim')),
+          record_id TEXT NOT NULL,
+          visible INTEGER NOT NULL CHECK (visible IN (0, 1))
+        ) STRICT;
+        CREATE INDEX search_visibility_scope_visible_idx
+          ON search_visibility(scope_id, visible, record_kind, record_id);
+
+        INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+        SELECT 'entity:' || entity_id, scope_id, 'entity', entity_id, CASE WHEN status = 'accepted' THEN 1 ELSE 0 END
+        FROM entities;
+        INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+        SELECT 'alias:' || a.alias_id, a.scope_id, 'alias', a.entity_id,
+               CASE WHEN a.status = 'accepted' AND e.status = 'accepted' THEN 1 ELSE 0 END
+        FROM aliases AS a
+        JOIN entities AS e ON e.scope_id = a.scope_id AND e.entity_id = a.entity_id;
+        INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+        SELECT 'evidence:' || evidence_id, scope_id, 'evidence', evidence_id,
+               CASE WHEN EXISTS (
+                 SELECT 1 FROM claim_evidence AS ce
+                 JOIN claims AS c ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
+                 WHERE ce.scope_id = evidence.scope_id AND ce.evidence_id = evidence.evidence_id
+                   AND c.status IN ('accepted', 'superseded')
+               ) THEN 1 ELSE 0 END
+        FROM evidence;
+        INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+        SELECT 'claim:' || claim_id, scope_id, 'claim', claim_id,
+               CASE WHEN status IN ('accepted', 'superseded') THEN 1 ELSE 0 END
+        FROM claims;
+
+        CREATE TRIGGER search_visibility_entities_insert AFTER INSERT ON entities BEGIN
+          INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+          VALUES ('entity:' || NEW.entity_id, NEW.scope_id, 'entity', NEW.entity_id,
+                  CASE WHEN NEW.status = 'accepted' THEN 1 ELSE 0 END);
+        END;
+        CREATE TRIGGER search_visibility_entities_delete AFTER DELETE ON entities BEGIN
+          DELETE FROM search_visibility WHERE doc_key = 'entity:' || OLD.entity_id;
+          DELETE FROM search_visibility
+           WHERE scope_id = OLD.scope_id AND record_kind = 'alias' AND record_id = OLD.entity_id;
+        END;
+        CREATE TRIGGER search_visibility_entities_status AFTER UPDATE OF status ON entities BEGIN
+          UPDATE search_visibility
+             SET visible = CASE WHEN NEW.status = 'accepted' THEN 1 ELSE 0 END
+           WHERE doc_key = 'entity:' || NEW.entity_id;
+          UPDATE search_visibility
+             SET visible = CASE WHEN NEW.status = 'accepted' AND EXISTS (
+               SELECT 1 FROM aliases AS a
+               WHERE a.scope_id = NEW.scope_id AND a.alias_id = substr(search_visibility.doc_key, 7)
+                 AND a.status = 'accepted'
+             ) THEN 1 ELSE 0 END
+           WHERE scope_id = NEW.scope_id AND record_kind = 'alias' AND record_id = NEW.entity_id;
+        END;
+
+        CREATE TRIGGER search_visibility_aliases_insert AFTER INSERT ON aliases BEGIN
+          INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+          SELECT 'alias:' || NEW.alias_id, NEW.scope_id, 'alias', NEW.entity_id,
+                 CASE WHEN NEW.status = 'accepted' AND e.status = 'accepted' THEN 1 ELSE 0 END
+          FROM entities AS e
+          WHERE e.scope_id = NEW.scope_id AND e.entity_id = NEW.entity_id;
+        END;
+        CREATE TRIGGER search_visibility_aliases_delete AFTER DELETE ON aliases BEGIN
+          DELETE FROM search_visibility WHERE doc_key = 'alias:' || OLD.alias_id;
+        END;
+        CREATE TRIGGER search_visibility_aliases_status AFTER UPDATE OF status ON aliases BEGIN
+          UPDATE search_visibility
+             SET visible = CASE WHEN NEW.status = 'accepted' AND EXISTS (
+               SELECT 1 FROM entities AS e
+               WHERE e.scope_id = NEW.scope_id AND e.entity_id = NEW.entity_id AND e.status = 'accepted'
+             ) THEN 1 ELSE 0 END
+           WHERE doc_key = 'alias:' || NEW.alias_id;
+        END;
+
+        CREATE TRIGGER search_visibility_evidence_insert AFTER INSERT ON evidence BEGIN
+          INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+          VALUES ('evidence:' || NEW.evidence_id, NEW.scope_id, 'evidence', NEW.evidence_id,
+                  CASE WHEN EXISTS (
+                    SELECT 1 FROM claim_evidence AS ce
+                    JOIN claims AS c ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
+                    WHERE ce.scope_id = NEW.scope_id AND ce.evidence_id = NEW.evidence_id
+                      AND c.status IN ('accepted', 'superseded')
+                  ) THEN 1 ELSE 0 END);
+        END;
+        CREATE TRIGGER search_visibility_evidence_delete AFTER DELETE ON evidence BEGIN
+          DELETE FROM search_visibility WHERE doc_key = 'evidence:' || OLD.evidence_id;
+        END;
+
+        CREATE TRIGGER search_visibility_claims_insert AFTER INSERT ON claims BEGIN
+          INSERT INTO search_visibility(doc_key, scope_id, record_kind, record_id, visible)
+          VALUES ('claim:' || NEW.claim_id, NEW.scope_id, 'claim', NEW.claim_id,
+                  CASE WHEN NEW.status IN ('accepted', 'superseded') THEN 1 ELSE 0 END);
+        END;
+        CREATE TRIGGER search_visibility_claims_delete AFTER DELETE ON claims BEGIN
+          DELETE FROM search_visibility WHERE doc_key = 'claim:' || OLD.claim_id;
+        END;
+        CREATE TRIGGER search_visibility_claims_status AFTER UPDATE OF status ON claims BEGIN
+          UPDATE search_visibility
+             SET visible = CASE WHEN NEW.status IN ('accepted', 'superseded') THEN 1 ELSE 0 END
+           WHERE doc_key = 'claim:' || NEW.claim_id;
+          UPDATE search_visibility
+             SET visible = CASE WHEN EXISTS (
+               SELECT 1 FROM claim_evidence AS ce
+               JOIN claims AS c ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
+               WHERE ce.scope_id = NEW.scope_id AND ce.evidence_id = search_visibility.record_id
+                 AND c.status IN ('accepted', 'superseded')
+             ) THEN 1 ELSE 0 END
+           WHERE scope_id = NEW.scope_id AND record_kind = 'evidence'
+             AND record_id IN (SELECT evidence_id FROM claim_evidence WHERE scope_id = NEW.scope_id AND claim_id = NEW.claim_id);
+        END;
+
+        CREATE TRIGGER search_visibility_claim_evidence_insert AFTER INSERT ON claim_evidence BEGIN
+          UPDATE search_visibility
+             SET visible = CASE WHEN EXISTS (
+               SELECT 1 FROM claim_evidence AS ce
+               JOIN claims AS c ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
+               WHERE ce.scope_id = NEW.scope_id AND ce.evidence_id = NEW.evidence_id
+                 AND c.status IN ('accepted', 'superseded')
+             ) THEN 1 ELSE 0 END
+           WHERE doc_key = 'evidence:' || NEW.evidence_id;
+        END;
+        CREATE TRIGGER search_visibility_claim_evidence_delete AFTER DELETE ON claim_evidence BEGIN
+          UPDATE search_visibility
+             SET visible = CASE WHEN EXISTS (
+               SELECT 1 FROM claim_evidence AS ce
+               JOIN claims AS c ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
+               WHERE ce.scope_id = OLD.scope_id AND ce.evidence_id = OLD.evidence_id
+                 AND c.status IN ('accepted', 'superseded')
+             ) THEN 1 ELSE 0 END
+           WHERE doc_key = 'evidence:' || OLD.evidence_id;
+        END;
+      `);
+    },
+  },
 ]);
 
 export function getCurrentSchemaVersion(database: DatabaseSync): number {

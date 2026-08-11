@@ -6,6 +6,12 @@ import {
   serializeGetResponse,
   serializeSearchResponse,
 } from "./retrieval.ts";
+import {
+  KnowledgeGraphDeletionError,
+  KnowledgeGraphDeletionService,
+  type KnowledgeGraphDeletionPreview,
+} from "./deletion.ts";
+import { KnowledgeGraphMaintenance, KnowledgeGraphMaintenanceError } from "./maintenance.ts";
 import { KnowledgeGraphProposalService } from "./proposal.ts";
 import { KnowledgeGraphSessionRuntime } from "./session.ts";
 
@@ -121,6 +127,64 @@ function errorResult(error: unknown) {
 function compactToolText(text: string, expanded: boolean): string {
   if (expanded || text.length <= 1_500) return text;
   return `${text.slice(0, 1_500)}\n… (expand to view the complete bounded result)`;
+}
+
+function parseScopedArgument(raw: string, currentProjectScope: string): { scopeId: string; argument: string } {
+  const tokens = raw.trim().split(/\s+/u).filter(Boolean);
+  if (tokens[0] === "global") return { scopeId: "global", argument: tokens.slice(1).join(" ") };
+  if (tokens[0] === "current") return { scopeId: currentProjectScope, argument: tokens.slice(1).join(" ") };
+  return { scopeId: currentProjectScope, argument: tokens.join(" ") };
+}
+
+function parseExportArguments(raw: string): { filename: string; scope: "current" | "global" | "all" } {
+  const tokens = raw.trim().split(/\s+/u).filter(Boolean);
+  let scope: "current" | "global" | "all" = "current";
+  const last = tokens.at(-1);
+  if (last === "current" || last === "global" || last === "all") {
+    scope = last;
+    tokens.pop();
+  }
+  if (tokens.length > 1) {
+    throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Use: /knowledge-export [filename.json] [current|global|all].");
+  }
+  return {
+    filename: tokens[0] ?? `knowledge-graph-${Date.now()}.json`,
+    scope,
+  };
+}
+
+function parseForgetArguments(raw: string, currentProjectScope: string):
+  | { operation: "purge"; scopeId: string; targetId: "" }
+  | { operation: "forget"; scopeId: string; targetId: string } {
+  const parsed = parseScopedArgument(raw, currentProjectScope);
+  if (parsed.argument === "purge") return { operation: "purge", scopeId: parsed.scopeId, targetId: "" };
+  if (parsed.argument.length === 0) {
+    throw new KnowledgeGraphDeletionError("invalid_target", "Use: /knowledge-forget [global|current] <stable-id|purge>.");
+  }
+  if (parsed.argument.includes(" ")) {
+    throw new KnowledgeGraphDeletionError("invalid_target", "Forget accepts one stable ID or the purge operation.");
+  }
+  return { operation: "forget", scopeId: parsed.scopeId, targetId: parsed.argument };
+}
+
+function formatDeletionCounts(preview: KnowledgeGraphDeletionPreview): string {
+  const { counts } = preview;
+  return `${counts.entities} entities, ${counts.aliases} aliases, ${counts.claims} claims, ${counts.evidence} evidence records, ${counts.proposals} proposals, and ${counts.searchDocuments} search-index rows`;
+}
+
+function formatDeletionPreview(preview: KnowledgeGraphDeletionPreview): string {
+  const target = preview.targetId === undefined ? "scope" : `${preview.targetKind} ${preview.targetId}`;
+  return [
+    `Knowledge ${preview.operation} preview (${target})`,
+    `scope: ${preview.scopeId}`,
+    `affected: ${formatDeletionCounts(preview)}`,
+    `links: ${preview.counts.claimEvidenceLinks} claim/evidence, ${preview.counts.claimSupersessionLinks} claim-history, ${preview.counts.proposalClaimLinks} proposal/claim, ${preview.counts.proposalEvidenceLinks} proposal/evidence, ${preview.counts.proposalSupersessionLinks} proposal-history`,
+  ].join("\n");
+}
+
+function maintenanceErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof KnowledgeGraphDeletionError || error instanceof KnowledgeGraphMaintenanceError) return error.message;
+  return fallback;
 }
 
 export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
@@ -251,22 +315,23 @@ export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
           ctx.ui.notify("Knowledge review requires an interactive TUI or RPC UI.", "warning");
           return;
         }
+        const reviewTarget = parseScopedArgument(args, current.project.scopeId);
         const proposals = new KnowledgeGraphProposalService(current.repositories);
-        const pending = proposals.listPending(current.project.scopeId);
+        const pending = proposals.listPending(reviewTarget.scopeId);
         if (pending.length === 0) {
-          ctx.ui.notify("No pending knowledge proposals.", "info");
+          ctx.ui.notify("No pending knowledge proposals in the requested scope.", "info");
           return;
         }
-        let proposalId = args.trim();
+        let proposalId = reviewTarget.argument;
         if (!proposalId) {
           const selected = await ctx.ui.select(
-            "Select a knowledge proposal to review:",
+            `Select a knowledge proposal to review (${reviewTarget.scopeId === "global" ? "global" : "current project"}):`,
             pending.map((proposal) => proposal.proposalId),
           );
           if (!selected) return;
           proposalId = selected;
         }
-        const candidate = current.repositories.getProposalCandidates(current.project.scopeId, proposalId);
+        const candidate = current.repositories.getProposalCandidates(reviewTarget.scopeId, proposalId);
         const preview = [
           `Proposal: ${proposalId}`,
           ...candidate.claims.map((claim) => `Claim ${claim.claimId}: ${claim.subjectEntityId} ${claim.predicate} ${JSON.stringify(claim.object)}`),
@@ -285,12 +350,12 @@ export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
           const originalExcerpt = candidate.evidence[0]?.excerpt ?? "";
           const correctedExcerpt = await ctx.ui.editor("Correct proposal evidence", originalExcerpt);
           if (correctedExcerpt === undefined) return;
-          const edited = proposals.edit(current.project.scopeId, proposalId, correctedExcerpt, provenance);
+          const edited = proposals.edit(reviewTarget.scopeId, proposalId, correctedExcerpt, provenance);
           ctx.ui.notify(`Proposal ${edited.proposal.proposalId} remains pending with corrected evidence.`, "info");
           return;
         }
         const reviewed = proposals.review(
-          current.project.scopeId,
+          reviewTarget.scopeId,
           proposalId,
           decision === "Accept" ? "accepted" : "rejected",
           provenance,
@@ -298,6 +363,76 @@ export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
         ctx.ui.notify(`Decision: ${reviewed.proposal.status}`, "info");
       } catch {
         ctx.ui.notify("Knowledge proposal review failed.", "error");
+      }
+    },
+  });
+
+  pi.registerCommand("knowledge-export", {
+    description: "Export canonical knowledge records to the private export directory.",
+    async handler(args, ctx) {
+      try {
+        const current = runtime.ensure(ctx);
+        const parsed = parseExportArguments(args);
+        const maintenance = new KnowledgeGraphMaintenance(current.database.open(), current.repositories);
+        const scopeIds = parsed.scope === "global"
+          ? ["global"]
+          : parsed.scope === "all"
+            ? [current.project.scopeId, "global"]
+            : [current.project.scopeId];
+        const path = maintenance.writeSnapshot(parsed.filename, scopeIds);
+        for (const scopeId of scopeIds) {
+          current.repositories.appendAuditEvent(scopeId, {
+            actorType: "user",
+            action: "export",
+            targetType: "system",
+            metadataJson: JSON.stringify({ filename: parsed.filename }),
+            sessionId: ctx.sessionManager.getSessionId(),
+            sessionEntryId: ctx.sessionManager.getLeafId() ?? undefined,
+            branchLeaf: ctx.sessionManager.getLeafId() ?? undefined,
+          });
+        }
+        ctx.ui.notify(`Knowledge export written to ${path}.`, "info");
+      } catch (error) {
+        ctx.ui.notify(maintenanceErrorMessage(error, "Knowledge export failed."), "error");
+      }
+    },
+  });
+
+  pi.registerCommand("knowledge-forget", {
+    description: "Preview and explicitly confirm deletion of scoped knowledge or a complete scope purge.",
+    async handler(args, ctx) {
+      try {
+        const current = runtime.ensure(ctx);
+        const parsed = parseForgetArguments(args, current.project.scopeId);
+        const deletion = new KnowledgeGraphDeletionService(current.database.open(), current.repositories);
+        const preview = parsed.operation === "purge"
+          ? deletion.previewPurge(parsed.scopeId)
+          : deletion.previewForget(parsed.scopeId, parsed.targetId);
+        ctx.ui.notify(formatDeletionPreview(preview), "info");
+        if (!ctx.hasUI) {
+          ctx.ui.notify("Interactive confirmation is unavailable; no knowledge was deleted.", "warning");
+          return;
+        }
+        const confirmed = await ctx.ui.confirm(
+          parsed.operation === "purge" ? "Purge knowledge scope?" : "Forget knowledge record?",
+          "This permanently removes the previewed canonical records. Audit metadata is retained.",
+        );
+        if (!confirmed) {
+          ctx.ui.notify("Knowledge deletion cancelled; no records were changed.", "info");
+          return;
+        }
+        const provenance = {
+          actorType: "user" as const,
+          sessionId: ctx.sessionManager.getSessionId(),
+          sessionEntryId: ctx.sessionManager.getLeafId() ?? undefined,
+          branchLeaf: ctx.sessionManager.getLeafId() ?? undefined,
+        };
+        const result = parsed.operation === "purge"
+          ? deletion.purge(parsed.scopeId, provenance)
+          : deletion.forget(parsed.scopeId, parsed.targetId, provenance);
+        ctx.ui.notify(`Knowledge deletion complete: ${formatDeletionCounts(result.preview)}.`, "info");
+      } catch (error) {
+        ctx.ui.notify(maintenanceErrorMessage(error, "Knowledge deletion failed; no records were changed."), "error");
       }
     },
   });

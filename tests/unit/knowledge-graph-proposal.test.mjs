@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
 const { KnowledgeGraphProposalService } = await import("../../extensions/knowledge-graph/proposal.ts");
+const { KnowledgeGraphRepositories } = await import("../../extensions/knowledge-graph/repository.ts");
 const { KnowledgeGraphRetrieval } = await import("../../extensions/knowledge-graph/retrieval.ts");
 const {
   PROJECT_SCOPE,
@@ -91,8 +93,69 @@ test("accepted review promotes only the candidate and preserves provenance", () 
     assert.equal(accepted.candidates.entities.length, 0);
     const audit = fixture.repositories.listAuditEvents(PROJECT_SCOPE);
     assert.equal(audit.some((event) => event.action === "acceptance" && event.targetId === submission.proposal.proposalId), true);
+    const acceptanceAudit = audit.find((event) => event.action === "acceptance" && event.targetId === submission.proposal.proposalId);
+    assert.deepEqual(
+      {
+        sessionId: acceptanceAudit.sessionId,
+        sessionEntryId: acceptanceAudit.sessionEntryId,
+        toolCallId: acceptanceAudit.toolCallId,
+        branchLeaf: acceptanceAudit.branchLeaf,
+      },
+      {
+        sessionId: "review-session",
+        sessionEntryId: "review-entry",
+        toolCallId: "review-tool",
+        branchLeaf: "review-leaf",
+      },
+    );
+    assert.deepEqual(
+      {
+        sessionId: accepted.candidates.evidence[0].sessionId,
+        sessionEntryId: accepted.candidates.evidence[0].sessionEntryId,
+        toolCallId: accepted.candidates.evidence[0].toolCallId,
+        branchLeaf: accepted.candidates.evidence[0].branchLeaf,
+      },
+      {
+        sessionId: "agent-session",
+        sessionEntryId: "entry-1",
+        toolCallId: "tool-1",
+        branchLeaf: "leaf-1",
+      },
+    );
     assert.equal(accepted.candidates.evidence[0].trustClass, "local_file");
   } finally {
+    cleanupKnowledgeGraphFixture(fixture);
+  }
+});
+
+test("a second reviewer cannot overwrite an already-reviewed proposal", () => {
+  const fixture = createKnowledgeGraphFixture();
+  const secondDatabase = new KnowledgeGraphDatabase({ paths: fixture.config, now: () => FIXTURE_NOW });
+  try {
+    const secondRepositories = new KnowledgeGraphRepositories(secondDatabase.open(), { now: () => FIXTURE_NOW });
+    secondRepositories.registerScope({ scopeId: "global", kind: "global" });
+    secondRepositories.registerScope({ scopeId: PROJECT_SCOPE, kind: "project" });
+    secondRepositories.registerScope({ scopeId: OTHER_PROJECT_SCOPE, kind: "project" });
+    const service = new KnowledgeGraphProposalService(fixture.repositories);
+    const secondService = new KnowledgeGraphProposalService(secondRepositories);
+    const submission = service.submit(PROJECT_SCOPE, {
+      actorType: "agent",
+      subject: { label: "Concurrent Fact", type: "concept" },
+      predicate: "has_value",
+      object: { kind: "text", value: "one" },
+      evidence: [{ sourceKind: "user_statement", excerpt: "Concurrent fact is one." }],
+    });
+    assert.equal(secondRepositories.getProposal(PROJECT_SCOPE, submission.proposal.proposalId)?.status, "pending");
+    const accepted = service.review(PROJECT_SCOPE, submission.proposal.proposalId, "accepted", { actorType: "user", sessionId: "first-review" });
+    assert.equal(accepted.proposal.status, "accepted");
+    assert.throws(
+      () => secondService.review(PROJECT_SCOPE, submission.proposal.proposalId, "rejected", { actorType: "user", sessionId: "second-review" }),
+      (error) => error?.code === "invalid_input",
+    );
+    assert.equal(fixture.repositories.getProposal(PROJECT_SCOPE, submission.proposal.proposalId)?.status, "accepted");
+    assert.equal(fixture.repositories.listAuditEvents(PROJECT_SCOPE).filter((event) => event.action === "acceptance").length, 1);
+  } finally {
+    secondDatabase.close();
     cleanupKnowledgeGraphFixture(fixture);
   }
 });

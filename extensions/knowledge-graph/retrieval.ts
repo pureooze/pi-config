@@ -280,48 +280,18 @@ export class KnowledgeGraphRetrieval {
     const questionQuery = isQuestionQuery(tokens);
     const placeholders = context.scopeIds.map(() => "?").join(", ");
     const rows = this.getRows(
-      `SELECT doc_key, scope_id, record_kind, record_id, text, bm25(search_documents) AS rank
+      `SELECT search_documents.doc_key, search_documents.scope_id, search_documents.record_kind,
+              search_documents.record_id, search_documents.text, bm25(search_documents) AS rank
        FROM search_documents
+       JOIN search_visibility AS visibility
+         ON visibility.doc_key = search_documents.doc_key
+        AND visibility.scope_id = search_documents.scope_id
+        AND visibility.visible = 1
        WHERE search_documents MATCH ?
-         AND scope_id IN (${placeholders})
-         AND (
-           (record_kind = 'entity' AND EXISTS (
-             SELECT 1 FROM entities AS e
-             WHERE e.scope_id = search_documents.scope_id
-               AND e.entity_id = search_documents.record_id
-               AND e.status = 'accepted'
-           ))
-           OR (record_kind = 'alias' AND EXISTS (
-             SELECT 1 FROM aliases AS a
-             WHERE a.scope_id = search_documents.scope_id
-               AND a.alias_id = substr(search_documents.doc_key, 7)
-               AND a.entity_id = search_documents.record_id
-               AND a.status = 'accepted'
-           ) AND EXISTS (
-             SELECT 1 FROM entities AS e
-             WHERE e.scope_id = search_documents.scope_id
-               AND e.entity_id = search_documents.record_id
-               AND e.status = 'accepted'
-           ))
-           OR (record_kind = 'claim' AND EXISTS (
-             SELECT 1 FROM claims AS c
-             WHERE c.scope_id = search_documents.scope_id
-               AND c.claim_id = search_documents.record_id
-               AND c.status IN ('accepted', 'superseded')
-           ))
-           OR (record_kind = 'evidence' AND EXISTS (
-             SELECT 1
-             FROM claim_evidence AS ce
-             JOIN claims AS c
-               ON c.scope_id = ce.scope_id AND c.claim_id = ce.claim_id
-             WHERE ce.scope_id = search_documents.scope_id
-               AND ce.evidence_id = search_documents.record_id
-               AND c.status IN ('accepted', 'superseded')
-           ))
-         )
-       ORDER BY rank ASC, doc_key ASC
+         AND search_documents.scope_id IN (${placeholders})
+       ORDER BY rank ASC, search_documents.doc_key ASC
        LIMIT ?`,
-      [matchQuery, ...context.scopeIds, Math.min(this.maxDocuments, Math.max(limit * 20, limit))],
+      [matchQuery, ...context.scopeIds, Math.min(this.maxDocuments, Math.max(limit * 2, limit))],
     );
 
     const candidates = new Map<string, SearchCandidate>();
@@ -469,7 +439,7 @@ export class KnowledgeGraphRetrieval {
       for (const candidateScope of scopeIds) {
         const evidence = this.repositories.getEvidence(candidateScope, request.id);
         if (!evidence) continue;
-        const claims = this.findClaimIdsForEvidence(candidateScope, evidence.evidenceId)
+        const claims = this.findClaimIdsForEvidence(candidateScope, evidence.evidenceId, limit)
           .map((claimId) => this.repositories.getClaim(candidateScope, claimId))
           .filter((claim): claim is ClaimRecord => claim !== undefined && this.isClaimVisible(claim, context))
           .slice(0, limit)
@@ -620,7 +590,7 @@ export class KnowledgeGraphRetrieval {
     score: number,
     context: SearchContext,
   ): void {
-    for (const claimId of this.findClaimIdsForEntity(scopeId, entityId)) {
+    for (const claimId of this.findClaimIdsForEntity(scopeId, entityId, this.maxDocuments)) {
       const claim = this.repositories.getClaim(scopeId, claimId);
       if (claim && this.isClaimVisible(claim, context)) {
         this.addCandidate(candidates, "claim", claim.claimId, scopeId, score, "entity_relation");
@@ -630,7 +600,7 @@ export class KnowledgeGraphRetrieval {
   }
 
   private entityClaims(entity: EntityRecord, context: SearchContext, limit: number): ClaimSearchResult[] {
-    return this.findClaimIdsForEntity(entity.scopeId, entity.entityId)
+    return this.findClaimIdsForEntity(entity.scopeId, entity.entityId, limit)
       .map((claimId) => this.repositories.getClaim(entity.scopeId, claimId))
       .filter((claim): claim is ClaimRecord => claim !== undefined && this.isClaimVisible(claim, context))
       .slice(0, limit)
@@ -727,17 +697,11 @@ export class KnowledgeGraphRetrieval {
   }
 
   private entityCitations(entity: EntityRecord, context: SearchContext): readonly EvidenceCitation[] {
-    const claimIds = this.getRows(
-      `SELECT claim_id
-       FROM claims
-       WHERE scope_id = ? AND (subject_entity_id = ? OR object_entity_id = ?)
-       ORDER BY claim_id`,
-      [entity.scopeId, entity.entityId, entity.entityId],
-    );
+    const claimIds = this.findClaimIdsForEntity(entity.scopeId, entity.entityId, MAX_EVIDENCE_CITATIONS * 16);
     const citations: EvidenceCitation[] = [];
     const seen = new Set<string>();
-    for (const row of claimIds) {
-      const claim = this.repositories.getClaim(entity.scopeId, rowString(row, "claim_id"));
+    for (const claimId of claimIds) {
+      const claim = this.repositories.getClaim(entity.scopeId, claimId);
       if (!claim || !this.isClaimVisible(claim, context)) continue;
       for (const citation of this.claimCitations(entity.scopeId, claim.claimId)) {
         if (seen.has(citation.evidenceId)) continue;
@@ -749,23 +713,25 @@ export class KnowledgeGraphRetrieval {
     return citations;
   }
 
-  private findClaimIdsForEvidence(scopeId: string, evidenceId: string): string[] {
+  private findClaimIdsForEvidence(scopeId: string, evidenceId: string, limit = this.maxDocuments): string[] {
     return this.getRows(
       `SELECT claim_id
        FROM claim_evidence
        WHERE scope_id = ? AND evidence_id = ?
-       ORDER BY claim_id`,
-      [scopeId, evidenceId],
+       ORDER BY claim_id
+       LIMIT ?`,
+      [scopeId, evidenceId, Math.min(this.maxDocuments, Math.max(1, limit))],
     ).map((row) => rowString(row, "claim_id"));
   }
 
-  private findClaimIdsForEntity(scopeId: string, entityId: string): string[] {
+  private findClaimIdsForEntity(scopeId: string, entityId: string, limit = this.maxDocuments): string[] {
     return this.getRows(
       `SELECT claim_id
        FROM claims
        WHERE scope_id = ? AND (subject_entity_id = ? OR object_entity_id = ?)
-       ORDER BY claim_id`,
-      [scopeId, entityId, entityId],
+       ORDER BY claim_id
+       LIMIT ?`,
+      [scopeId, entityId, entityId, Math.min(this.maxDocuments, Math.max(1, limit))],
     ).map((row) => rowString(row, "claim_id"));
   }
 

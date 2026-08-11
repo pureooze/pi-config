@@ -18,7 +18,7 @@ export function fixtureId(prefix, number) {
   return `${prefix}00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
 }
 
-export function createKnowledgeGraphFixture() {
+export function createEmptyKnowledgeGraphFixture() {
   const root = mkdtempSync(join(tmpdir(), "pi-knowledge-graph-core-"));
   const config = resolveKnowledgeGraphConfig({
     cwd: join(root, "project"),
@@ -29,6 +29,12 @@ export function createKnowledgeGraphFixture() {
   });
   const database = new KnowledgeGraphDatabase({ paths: config, now: () => FIXTURE_NOW });
   const repositories = new KnowledgeGraphRepositories(database.open(), { now: () => FIXTURE_NOW });
+  return { root, config, database, repositories };
+}
+
+export function createKnowledgeGraphFixture() {
+  const fixture = createEmptyKnowledgeGraphFixture();
+  const { root, repositories } = fixture;
   repositories.registerScope({ scopeId: GLOBAL_SCOPE, kind: "global" });
   repositories.registerScope({
     scopeId: PROJECT_SCOPE,
@@ -37,7 +43,7 @@ export function createKnowledgeGraphFixture() {
     identityPath: join(root, "project", ".git"),
   });
   repositories.registerScope({ scopeId: OTHER_PROJECT_SCOPE, kind: "project" });
-  return { root, config, database, repositories };
+  return fixture;
 }
 
 export function seedKnowledgeGraphFixture(fixture) {
