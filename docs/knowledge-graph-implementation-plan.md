@@ -148,7 +148,7 @@ The extension entrypoint should be composition/registration code. Domain and sto
 - [x] **Phase 0 gate — Baseline is reproducible.**
   - Depends on: KG-0.1–KG-0.4
   - Acceptance: another contributor can run the same read-only baseline and distinguish existing failures from plugin regressions.
-  - Evidence: rerun `the work-with-pi skill's scripts/pi-doctor.sh`, the version/package checks in KG-0.4, and `pi --offline --help` from the repository root.
+  - Evidence: rerun the `work-with-pi` skill's `scripts/pi-doctor.sh`, the version/package checks in KG-0.4, and `pi --offline --help` from the repository root.
 
 ## Phase 1 — Scope and architecture decisions
 
