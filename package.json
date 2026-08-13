@@ -7,7 +7,7 @@
   "engines": {
     "node": ">=24.14.1"
   },
-  "description": "Git-managed local Pi extensions, including a scoped knowledge graph",
+  "description": "Git-managed local Pi extensions, including a shared knowledge graph",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-strip-types --test tests/unit/*.test.mjs",

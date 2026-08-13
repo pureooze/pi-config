@@ -4,6 +4,8 @@
 
 **Date:** 2026-08-06
 
+> Historical MVP threat model. Runtime knowledge visibility is now shared across working directories under [`knowledge-graph-adr-009-shared-knowledge-scope.md`](knowledge-graph-adr-009-shared-knowledge-scope.md); project-isolation controls below apply only to legacy migration and low-level compatibility surfaces.
+
 **Decision task:** KGM-1.7
 
 ## Security boundary and assumptions
@@ -121,7 +123,7 @@ The following must remain true regardless of model, provider, or Pi mode:
 
 1. No operation can read or mutate an excluded project scope by omitting scope, guessing an ID, or traversing a relationship.
 2. No secret-like evidence is persisted before the pre-persistence scanner accepts it.
-3. No agent tool call alone changes a proposal to accepted status.
+3. The only agent-facing mutation tool is `knowledge_maintain`; it may immediately accept validated insert/update candidates and perform single-target deletes under its documented controls.
 4. No retrieved source text changes system instructions, tool availability, filesystem paths, or permissions.
 5. No input controls database paths, SQL text, row IDs, actor/trust fields, or audit timestamps.
 6. No default output exceeds the fixed byte limit or contains unrequested history/global data.
@@ -139,3 +141,5 @@ These invariants are acceptance properties, not merely documentation. Each maps 
 - Pi project trust protects configuration loading, not model behavior or repository content. Untrusted repositories still require normal Pi/container precautions.
 - A malicious installed dependency or extension remains inside the user’s trust boundary.
 - Global knowledge intentionally becomes available across projects only when the user explicitly requests it; users must review global proposals carefully.
+
+**Post-MVP policy (2026-08-11):** ADR-008 supersedes the MVP's agent-acceptance invariant for the current agent-facing API. `knowledge_maintain` is the only agent mutation tool; there is no exposed `knowledge_propose` tool or `/knowledge-review` approval fallback. Its autonomous insert/update/delete operations retain bounded evidence, scope, secret-scan, non-bulk deletion, transaction, and audit controls instead of a user confirmation step. The proposal service is internal only.

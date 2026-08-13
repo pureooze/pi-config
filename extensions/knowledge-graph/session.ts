@@ -9,11 +9,11 @@ import {
 } from "./database.ts";
 import { KnowledgeGraphRepositories } from "./repository.ts";
 import { KnowledgeGraphRetrieval } from "./retrieval.ts";
-import { resolveProjectScope, type ProjectScopeResolution } from "./scope.ts";
+import { resolveKnowledgeScope, type KnowledgeScopeResolution } from "./scope.ts";
 
 export interface KnowledgeGraphRuntime {
   readonly config: KnowledgeGraphConfig;
-  readonly project: ProjectScopeResolution;
+  readonly project: KnowledgeScopeResolution;
   readonly projectTrusted: boolean;
   readonly database: KnowledgeGraphDatabase;
   readonly repositories: KnowledgeGraphRepositories;
@@ -24,22 +24,22 @@ export interface KnowledgeGraphRuntimeStatus {
   readonly scopeId: string;
   readonly projectRoot: string;
   readonly identityPath: string;
-  readonly projectSource: ProjectScopeResolution["source"];
+  readonly projectSource: KnowledgeScopeResolution["source"];
   readonly projectTrusted: boolean;
   readonly databasePath: string;
   readonly rootDirectory: string;
   readonly storeOpen: boolean;
   readonly schemaVersion: number | undefined;
   readonly warnings: readonly string[];
-  readonly currentProjectEntities: number | undefined;
-  readonly currentProjectClaims: number | undefined;
-  readonly currentProjectProposals: number | undefined;
+  readonly entities: number | undefined;
+  readonly claims: number | undefined;
+  readonly workflowRecords: number | undefined;
 }
 
 export class KnowledgeGraphSessionRuntime {
   private state: {
     config: KnowledgeGraphConfig;
-    project: ProjectScopeResolution;
+    project: KnowledgeScopeResolution;
     projectTrusted: boolean;
     database: KnowledgeGraphDatabase | undefined;
     repositories: KnowledgeGraphRepositories | undefined;
@@ -48,7 +48,7 @@ export class KnowledgeGraphSessionRuntime {
 
   start(ctx: Pick<ExtensionContext, "cwd" | "isProjectTrusted">): void {
     this.close();
-    const project = resolveProjectScope(ctx.cwd);
+    const project = resolveKnowledgeScope(ctx.cwd);
     const projectTrusted = ctx.isProjectTrusted();
     const config = resolveKnowledgeGraphConfig({
       cwd: ctx.cwd,
@@ -68,12 +68,6 @@ export class KnowledgeGraphSessionRuntime {
       const connection = database.open();
       const repositories = new KnowledgeGraphRepositories(connection);
       repositories.registerScope({ scopeId: "global", kind: "global" });
-      repositories.registerScope({
-        scopeId: state.project.scopeId,
-        kind: "project",
-        projectRoot: state.project.projectRoot,
-        identityPath: state.project.identityPath,
-      });
       state.database = database;
       state.repositories = repositories;
       state.retrieval = new KnowledgeGraphRetrieval(connection, repositories);
@@ -96,9 +90,9 @@ export class KnowledgeGraphSessionRuntime {
 
   status(ctx: Pick<ExtensionContext, "cwd" | "isProjectTrusted">): KnowledgeGraphRuntimeStatus {
     const runtime = this.ensure(ctx);
-    const projectEntities = runtime.repositories.listEntities(runtime.project.scopeId);
-    const projectClaims = runtime.repositories.listClaims(runtime.project.scopeId);
-    const projectProposals = runtime.repositories.listProposals(runtime.project.scopeId);
+    const entities = runtime.repositories.listEntities(runtime.project.scopeId);
+    const claims = runtime.repositories.listClaims(runtime.project.scopeId);
+    const workflowRecords = runtime.repositories.listProposals(runtime.project.scopeId);
     return {
       scopeId: runtime.project.scopeId,
       projectRoot: runtime.project.projectRoot,
@@ -110,9 +104,9 @@ export class KnowledgeGraphSessionRuntime {
       storeOpen: runtime.database.isOpen,
       schemaVersion: runtime.database.getSchemaVersion(),
       warnings: runtime.config.warnings,
-      currentProjectEntities: projectEntities.length,
-      currentProjectClaims: projectClaims.length,
-      currentProjectProposals: projectProposals.length,
+      entities: entities.length,
+      claims: claims.length,
+      workflowRecords: workflowRecords.length,
     };
   }
 }

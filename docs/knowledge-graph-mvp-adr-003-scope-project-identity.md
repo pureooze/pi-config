@@ -1,6 +1,8 @@
 # ADR-003: Scope isolation and canonical project identity
 
-**Status:** accepted for MVP
+**Status:** superseded by [ADR-009: Shared knowledge scope](knowledge-graph-adr-009-shared-knowledge-scope.md)
+
+> Historical design record. Its project-visibility decision no longer applies to runtime knowledge access.
 
 **Date:** 2026-08-06
 

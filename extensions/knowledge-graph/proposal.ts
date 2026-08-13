@@ -326,9 +326,11 @@ function normalizeSubmission(input: SubmitProposalInput) {
     throw new KnowledgeGraphProposalError("invalid_input", `Evidence must contain 1 through ${MAX_EVIDENCE_COUNT} entries.`);
   }
   const evidence = input.evidence.map((entry, index) => normalizeEvidence(entry, index));
+  const supersessionReason = optionalText(input.supersessionReason, "supersessionReason", 2_048);
   assertNoSecrets([
     ...evidence.map((entry, index) => ({ field: `evidence[${index}].excerpt`, text: entry.excerpt })),
     ...evidence.filter((entry) => entry.locator !== undefined).map((entry, index) => ({ field: `evidence[${index}].locator`, text: entry.locator ?? "" })),
+    ...(supersessionReason === undefined ? [] : [{ field: "supersessionReason", text: supersessionReason }]),
   ]);
   const newEntityCount = (subject.kind === "new" ? 1 : 0) + (object.kind === "new_entity" ? 1 : 0);
   if (newEntityCount > 2) throw new KnowledgeGraphProposalError("invalid_input", "A proposal may create at most two entities.");
@@ -342,7 +344,7 @@ function normalizeSubmission(input: SubmitProposalInput) {
     evidence,
     idempotencyKey: optionalText(input.idempotencyKey, "idempotencyKey", 128),
     supersedesClaimId: input.supersedesClaimId === undefined ? undefined : validateEntityOrClaimId(input.supersedesClaimId, "supersedesClaimId", "clm_"),
-    supersessionReason: optionalText(input.supersessionReason, "supersessionReason", 2_048),
+    supersessionReason,
     sessionId: optionalText(input.sessionId, "sessionId", MAX_PROVENANCE_LENGTH),
     sessionEntryId: optionalText(input.sessionEntryId, "sessionEntryId", MAX_PROVENANCE_LENGTH),
     toolCallId: optionalText(input.toolCallId, "toolCallId", MAX_PROVENANCE_LENGTH),

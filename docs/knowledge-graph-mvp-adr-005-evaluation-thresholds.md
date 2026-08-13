@@ -4,6 +4,8 @@
 
 **Date:** 2026-08-06
 
+> Historical MVP thresholds. Runtime knowledge is now intentionally shared across working directories under [`knowledge-graph-adr-009-shared-knowledge-scope.md`](knowledge-graph-adr-009-shared-knowledge-scope.md); the corpus still exercises the legacy low-level scope primitives.
+
 **Decision task:** KGM-1.6
 
 ## Purpose
@@ -85,3 +87,5 @@ The implementation may not lower a threshold merely because it fails. A revision
 - a new ADR revision or recorded decision before the dependent gate is checked.
 
 Safety thresholds—zero scope leakage, pre-persistence secret rejection, no unreviewed acceptance, bounded traversal, and bounded output—are not relaxed for the MVP.
+
+**Post-MVP note (2026-08-11):** ADR-008 replaces the agent-facing proposal/review surface with an explicitly named autonomous maintenance tool using a full candidate schema. Its separate 4,000-estimated-token all-active-tool budget is documented and measured there; the original 1,500-token budget remains the baseline for the MVP search/get surface. The historical proposal-review threshold remains in this MVP ADR for reproducibility.

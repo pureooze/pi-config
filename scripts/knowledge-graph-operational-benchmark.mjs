@@ -145,7 +145,10 @@ try {
     startupP50Ms: measurements.startup.p50 <= 100,
     startupP95Ms: measurements.startup.p95 <= 250,
     outputBytes: measurements.maximumSearchOutputBytes <= 12 * 1024,
-    toolSchemaEstimatedTokens: measurements.estimatedToolSchemaTokens <= 1_500,
+    // The post-MVP autonomous maintenance tool deliberately adds a complete
+    // candidate schema. ADR-008 raises the all-active-tool budget while the
+    // original 1,500-token MVP budget remains the read/review baseline.
+    toolSchemaEstimatedTokens: measurements.estimatedToolSchemaTokens <= 4_000,
   };
   console.log(JSON.stringify({
     status: Object.values(thresholds).every(Boolean) ? "pass" : "measurement_thresholds_exceeded",

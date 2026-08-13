@@ -18,7 +18,7 @@ function maintenanceFor(fixture) {
   return new KnowledgeGraphMaintenance(fixture.database.open(), fixture.repositories);
 }
 
-test("export and review remain scoped, and export names cannot escape private storage", () => {
+test("legacy scoped repository export/review stay bounded, and export names cannot escape private storage", () => {
   const fixture = createKnowledgeGraphFixture();
   try {
     const seeded = seedKnowledgeGraphFixture(fixture);

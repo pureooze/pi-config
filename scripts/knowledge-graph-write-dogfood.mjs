@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { KnowledgeGraphProposalService } = await import("../extensions/knowledge-graph/proposal.ts");
+const { KnowledgeGraphAgentMaintenanceService } = await import("../extensions/knowledge-graph/agent-maintenance.ts");
 const { KnowledgeGraphSessionRuntime } = await import("../extensions/knowledge-graph/session.ts");
 
 const root = mkdtempSync(join(tmpdir(), "pi-knowledge-graph-write-dogfood-"));
@@ -29,32 +29,25 @@ function freshSession(cwd, sessionId, operation) {
 
 try {
   const first = freshSession(projectA, "dogfood-session-1", (current, sessionId) => {
-    const proposals = new KnowledgeGraphProposalService(current.repositories);
-    const submission = proposals.submit(current.project.scopeId, {
-      actorType: "agent",
+    const maintenance = new KnowledgeGraphAgentMaintenanceService(current.database.open(), current.repositories);
+    const accepted = maintenance.execute(current.project.scopeId, {
+      operation: "insert",
       subject: { label: "Dogfood App", type: "project", aliases: ["dogfood"] },
       predicate: "release_channel",
       object: { kind: "text", value: "beta" },
       evidence: [{ sourceKind: "user_statement", excerpt: "Dogfood App currently uses the beta release channel." }],
+    }, {
       sessionId,
       sessionEntryId: "entry-1",
       toolCallId: "tool-1",
       branchLeaf: "leaf-1",
     });
-    assert.equal(submission.status, "pending");
-    const accepted = proposals.review(current.project.scopeId, submission.proposal.proposalId, "accepted", {
-      actorType: "user",
-      sessionId,
-      sessionEntryId: "review-1",
-      branchLeaf: "review-leaf-1",
-    });
-    assert.equal(accepted.proposal.status, "accepted");
-    assert.equal(accepted.candidates.claims[0].status, "accepted");
-    observations.push({ sessionId, project: "project-a", action: "propose-and-review", reviewRequired: true });
+    assert.equal(accepted.status, "accepted");
+    observations.push({ sessionId, project: "project-a", action: "autonomous-insert" });
     return {
       scopeId: current.project.scopeId,
-      entityId: accepted.candidates.entities[0].entityId,
-      claimId: accepted.candidates.claims[0].claimId,
+      entityId: accepted.entityIds[0],
+      claimId: accepted.claimIds[0],
     };
   });
 
@@ -66,32 +59,30 @@ try {
   });
 
   const correction = freshSession(projectA, "dogfood-session-3", (current, sessionId) => {
-    const proposals = new KnowledgeGraphProposalService(current.repositories);
-    const submission = proposals.submit(current.project.scopeId, {
-      actorType: "agent",
+    const maintenance = new KnowledgeGraphAgentMaintenanceService(current.database.open(), current.repositories);
+    const accepted = maintenance.execute(current.project.scopeId, {
+      operation: "update",
       subject: { entityId: first.entityId },
       predicate: "release_channel",
       object: { kind: "text", value: "stable" },
       supersedesClaimId: first.claimId,
-      supersessionReason: "The user corrected the release channel.",
+      supersessionReason: "The release channel changed to stable.",
       evidence: [{ sourceKind: "user_statement", excerpt: "Dogfood App now uses the stable release channel." }],
+    }, {
       sessionId,
+      toolCallId: "tool-3",
       branchLeaf: "leaf-3",
     });
-    const accepted = proposals.review(current.project.scopeId, submission.proposal.proposalId, "accepted", {
-      actorType: "user",
-      sessionId,
-      branchLeaf: "review-leaf-3",
-    });
-    assert.equal(accepted.candidates.claims[0].status, "accepted");
-    observations.push({ sessionId, project: "project-a", action: "correct-and-review", reviewRequired: true });
-    return accepted.candidates.claims[0].claimId;
+    assert.equal(accepted.status, "accepted");
+    observations.push({ sessionId, project: "project-a", action: "autonomous-update" });
+    return accepted.claimIds[0];
   });
 
   freshSession(projectB, "dogfood-session-4", (current, sessionId) => {
     const response = current.retrieval.search(current.project.scopeId, { query: "Dogfood App stable", limit: 5 });
-    assert.equal(response.insufficientEvidence, true);
-    observations.push({ sessionId, project: "project-b", action: "scope-isolation", leaked: false, resultCount: response.results.length });
+    assert.equal(response.insufficientEvidence, false);
+    assert.equal(response.results.some((result) => result.claimId === correction), true);
+    observations.push({ sessionId, project: "project-b", action: "shared-recall", shared: true, resultCount: response.results.length });
   });
 
   freshSession(projectA, "dogfood-session-5", (current, sessionId) => {
@@ -106,8 +97,8 @@ try {
   console.log(JSON.stringify({
     status: "pass",
     freshSessions: observations.length,
-    projectScopes: 2,
-    reviewDecisions: observations.filter((observation) => observation.reviewRequired).length,
+    sharedScope: true,
+    autonomousMutations: observations.filter((observation) => observation.action.startsWith("autonomous-")).length,
     observations,
   }, null, 2));
 } finally {

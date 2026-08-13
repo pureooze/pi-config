@@ -10,6 +10,8 @@
 
 This document preserves the broader production roadmap. The MVP plan is the authoritative execution tracker until its `KGM-G6` gate is complete; where the plans differ before that gate, the MVP plan takes precedence.
 
+**Current write-policy note (2026-08-11):** `knowledge_maintain` is the only agent-facing mutation tool. The older proposal/review tasks below describe historical MVP work or future architecture considerations; they are not an available approval workflow.
+
 ## Goal
 
 Build a local-first Pi extension that lets the agent accumulate, retrieve, review, correct, and forget evidence-backed knowledge across sessions without leaking knowledge across projects or flooding the model context.
@@ -631,6 +633,25 @@ Deliver useful recall before enabling durable mutation from Pi.
 - [ ] **Phase 12 gate — Release is documented and reproducible.**
   - Depends on: KG-12.1–KG-12.7
   - Acceptance: a new reader can install, understand, validate, operate, and safely remove the plugin.
+
+## Post-MVP increment — autonomous agent maintenance
+
+This increment intentionally replaces the reviewed-write MVP's agent mutation surface. The user-selected policy is fully autonomous: `knowledge_maintain` is the only agent-facing mutation tool, and no approval fallback is exposed. The internal proposal service remains for normalization and auditability.
+
+- [x] **KG-A.1 — Register autonomous `knowledge_maintain` operations.**
+  - Depends on: KGM-G6
+  - Acceptance: the agent can deliberately insert, append-update, or delete one scoped item through strict bounded inputs; insert/update use evidence-backed proposal normalization and deletion uses the existing bounded forget service.
+  - Evidence: [`extensions/knowledge-graph/agent-maintenance.ts`](../extensions/knowledge-graph/agent-maintenance.ts), [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](knowledge-graph-adr-008-autonomous-agent-maintenance.md).
+
+- [x] **KG-A.2 — Preserve autonomous mutation safety and provenance.**
+  - Depends on: KG-A.1
+  - Acceptance: global scope remains explicit; insert/update require bounded evidence and pre-persistence secret scanning; update preserves superseded history; delete is single-target, non-purge, bounded, reasoned, transactional, and audited with agent/session/tool/branch provenance.
+  - Evidence: [`extensions/knowledge-graph/deletion.ts`](../extensions/knowledge-graph/deletion.ts), [`extensions/knowledge-graph/proposal.ts`](../extensions/knowledge-graph/proposal.ts), [`tests/unit/knowledge-graph-agent-maintenance.test.mjs`](../tests/unit/knowledge-graph-agent-maintenance.test.mjs); `npm run typecheck`, `npm run test:unit`, and `npm run test:benchmark` pass with the ADR-008 active-tool budget.
+
+- [x] **KG-A.3 — Document the autonomous policy and recovery trade-offs.**
+  - Depends on: KG-A.1, KG-A.2
+  - Acceptance: users can distinguish autonomous maintenance from read-only tools and explicit user commands, understand that deletion is not undone by session branching, and recover through export/backup workflows.
+  - Evidence: [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](knowledge-graph-adr-008-autonomous-agent-maintenance.md), [`docs/knowledge-graph-mvp-operations.md`](knowledge-graph-mvp-operations.md), [`README.md`](../README.md).
 
 ## Deferred backlog
 

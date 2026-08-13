@@ -5,9 +5,11 @@ import {
   type AuditEventRecord,
   validateScopeId,
 } from "./repository.ts";
+import { assertNoSecrets } from "./security.ts";
 
 const UUID_SUFFIX = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 const MAX_AFFECTED_RECORDS = 10_000;
+const MAX_REASON_LENGTH = 2_048;
 const QUERY_CHUNK_SIZE = 500;
 const PREVIEW_SAMPLE_SIZE = 8;
 
@@ -47,6 +49,7 @@ export interface KnowledgeGraphMaintenanceProvenance {
   readonly sessionEntryId?: string;
   readonly toolCallId?: string;
   readonly branchLeaf?: string;
+  readonly reason?: string;
 }
 
 export interface KnowledgeGraphDeletionCounts {
@@ -124,17 +127,22 @@ export class KnowledgeGraphDeletionService {
   ): KnowledgeGraphDeletionResult {
     const validScopeId = this.requireScope(scopeId);
     const targetKind = classifyTarget(targetId);
+    const reason = normalizeReason(provenance.reason);
     return this.repositories.transaction(() => {
       const work = this.buildForgetSet(validScopeId, targetKind, targetId);
       const preview = this.makePreview("forget", validScopeId, work, targetKind, targetId);
       this.deleteSet(validScopeId, work);
       const auditEvent = this.repositories.appendAuditEvent(validScopeId, {
-        ...provenance,
+        actorType: provenance.actorType,
+        sessionId: provenance.sessionId,
+        sessionEntryId: provenance.sessionEntryId,
+        toolCallId: provenance.toolCallId,
+        branchLeaf: provenance.branchLeaf,
         action: "forget",
         targetType: targetKind,
         targetId,
         beforeIds: [targetId, ...this.previewIds(work)].slice(0, 32),
-        metadataJson: JSON.stringify({ counts: preview.counts }),
+        metadataJson: deletionMetadata(preview, reason),
       });
       return { preview, auditEvent };
     });
@@ -151,16 +159,21 @@ export class KnowledgeGraphDeletionService {
     provenance: KnowledgeGraphMaintenanceProvenance,
   ): KnowledgeGraphDeletionResult {
     const validScopeId = this.requireScope(scopeId);
+    const reason = normalizeReason(provenance.reason);
     return this.repositories.transaction(() => {
       const work = this.buildPurgeSet(validScopeId);
       const preview = this.makePreview("purge", validScopeId, work);
       this.deleteSet(validScopeId, work);
       const auditEvent = this.repositories.appendAuditEvent(validScopeId, {
-        ...provenance,
+        actorType: provenance.actorType,
+        sessionId: provenance.sessionId,
+        sessionEntryId: provenance.sessionEntryId,
+        toolCallId: provenance.toolCallId,
+        branchLeaf: provenance.branchLeaf,
         action: "purge",
         targetType: "scope",
         targetId: validScopeId,
-        metadataJson: JSON.stringify({ counts: preview.counts, auditEventsRetained: true }),
+        metadataJson: deletionMetadata(preview, reason, { auditEventsRetained: true }),
       });
       return { preview, auditEvent };
     });
@@ -500,6 +513,27 @@ export class KnowledgeGraphDeletionService {
   private notFound(): never {
     throw new KnowledgeGraphDeletionError("not_found", "The requested knowledge record is not visible in this scope.");
   }
+}
+
+function deletionMetadata(
+  preview: KnowledgeGraphDeletionPreview,
+  reason: string | undefined,
+  additional: Record<string, boolean> = {},
+): string {
+  return JSON.stringify({
+    counts: preview.counts,
+    ...additional,
+    ...(reason === undefined ? {} : { reason }),
+  });
+}
+
+function normalizeReason(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.trim().length === 0 || [...value].length > MAX_REASON_LENGTH) {
+    throw new KnowledgeGraphDeletionError("invalid_target", "Deletion reason must be a bounded non-empty string.");
+  }
+  assertNoSecrets([{ field: "reason", text: value }]);
+  return value;
 }
 
 function createDeletionWork(): DeletionWork {

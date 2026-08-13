@@ -39,11 +39,11 @@ test("logical export is deterministic, excludes FTS, and round-trips through res
 
     const restore = maintenanceFor(restored);
     restore.restoreSnapshot(first);
-    assert.deepEqual(restored.repositories.getClaim(PROJECT_SCOPE, seeded.claim.claimId), fixture.repositories.getClaim(PROJECT_SCOPE, seeded.claim.claimId));
-    assert.equal(restored.repositories.getEvidence(PROJECT_SCOPE, seeded.evidence.evidenceId)?.excerpt, seeded.evidence.excerpt);
+    assert.equal(restored.repositories.getClaim(GLOBAL_SCOPE, seeded.claim.claimId)?.status, "accepted");
+    assert.equal(restored.repositories.getEvidence(GLOBAL_SCOPE, seeded.evidence.evidenceId)?.excerpt, seeded.evidence.excerpt);
     assert.equal(restored.database.open().prepare(
       "SELECT COUNT(*) AS count FROM search_documents WHERE scope_id = ? AND record_id = ?",
-    ).get(PROJECT_SCOPE, seeded.claim.claimId).count, 1);
+    ).get(GLOBAL_SCOPE, seeded.claim.claimId).count, 1);
     assert.throws(() => restore.restoreSnapshot(first), (error) => error?.code === "restore_not_empty");
   } finally {
     cleanupKnowledgeGraphFixture(fixture);
@@ -70,7 +70,7 @@ test("database backup is private and integrity-verified", () => {
   }
 });
 
-test("forget removes a scoped claim and orphaned evidence while retaining audit metadata", () => {
+test("forget removes one claim and orphaned evidence while retaining audit metadata", () => {
   const fixture = createKnowledgeGraphFixture();
   try {
     const seeded = seedKnowledgeGraphFixture(fixture);
@@ -129,7 +129,7 @@ test("shared evidence is retained until its final claim is forgotten", () => {
   }
 });
 
-test("forget and purge cannot cross scopes, and purge retains only redacted audit history", () => {
+test("legacy scoped forget/purge retain redacted audit history", () => {
   const fixture = createKnowledgeGraphFixture();
   try {
     const seeded = seedKnowledgeGraphFixture(fixture);

@@ -1,8 +1,10 @@
 # ADR-004: MVP schema, tool contract, and reviewed-write policy
 
-**Status:** accepted for MVP
+**Status:** accepted for MVP; agent-facing write policy superseded by ADR-008
 
 **Date:** 2026-08-06
+
+> This ADR defines the completed reviewed-write MVP contract. The current agent-facing mutation surface is `knowledge_maintain` only; `knowledge_propose` and `/knowledge-review` are no longer exposed. The proposal/review details below remain historical implementation context. Runtime knowledge visibility is now the single shared scope defined by [ADR-009](knowledge-graph-adr-009-shared-knowledge-scope.md).
 
 **Decision task:** KGM-1.4
 
@@ -16,7 +18,8 @@ This ADR depends on:
 
 - [ADR-001: SQLite runtime](knowledge-graph-mvp-adr-001-sqlite-runtime.md)
 - [ADR-002: storage paths and permissions](knowledge-graph-mvp-adr-002-storage-paths.md)
-- [ADR-003: scope and project identity](knowledge-graph-mvp-adr-003-scope-project-identity.md)
+- [ADR-003: scope and project identity](knowledge-graph-mvp-adr-003-scope-project-identity.md) (historical; superseded by ADR-009)
+- [ADR-009: shared knowledge scope](knowledge-graph-adr-009-shared-knowledge-scope.md)
 
 ## Canonical records
 

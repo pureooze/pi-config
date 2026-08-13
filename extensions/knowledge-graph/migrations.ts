@@ -10,6 +10,23 @@ export interface KnowledgeGraphMigration {
   readonly up: (database: DatabaseSync, context: MigrationContext) => void;
 }
 
+const SHARED_SCOPE = "global";
+const SHARED_SCOPE_TABLES = [
+  "entities",
+  "aliases",
+  "evidence",
+  "claims",
+  "claim_evidence",
+  "claim_supersession",
+  "audit_events",
+  "proposals",
+  "proposal_claims",
+  "proposal_evidence",
+  "proposal_supersession",
+  "search_documents",
+  "search_visibility",
+] as const;
+
 export const MVP_MIGRATIONS: readonly KnowledgeGraphMigration[] = Object.freeze([
   {
     version: 1,
@@ -556,7 +573,75 @@ export const MVP_MIGRATIONS: readonly KnowledgeGraphMigration[] = Object.freeze(
       `);
     },
   },
+  {
+    version: 8,
+    name: "shared_knowledge_scope",
+    up(database) {
+      // Existing releases stored facts under cwd-derived project scopes. Move every
+      // canonical and derived row into the one shared scope before removing those
+      // scope records. The migration runner already wraps this in a transaction.
+      database.exec("PRAGMA defer_foreign_keys = ON;");
+      database.prepare(
+        `INSERT INTO scopes(scope_id, kind, project_root, identity_path, created_at)
+         VALUES ('global', 'global', NULL, NULL, 0)
+         ON CONFLICT(scope_id) DO NOTHING`,
+      ).run();
+      assertSharedScopeMergeSafe(database);
+
+      const projectScopes = database
+        .prepare("SELECT scope_id FROM scopes WHERE kind = 'project' ORDER BY scope_id")
+        .all()
+        .map((row) => {
+          if (typeof row.scope_id !== "string") throw new Error("Project scope metadata is corrupt.");
+          return row.scope_id;
+        });
+
+      for (const projectScope of projectScopes) {
+        for (const table of SHARED_SCOPE_TABLES) {
+          database.prepare(`UPDATE ${table} SET scope_id = ? WHERE scope_id = ?`).run(SHARED_SCOPE, projectScope);
+        }
+        database.prepare(
+          `UPDATE audit_events
+           SET target_id = ?
+           WHERE scope_id = ? AND target_type = 'scope' AND target_id = ?`,
+        ).run(SHARED_SCOPE, SHARED_SCOPE, projectScope);
+      }
+      database.prepare("DELETE FROM scopes WHERE kind = 'project'").run();
+    },
+  },
 ]);
+
+function assertSharedScopeMergeSafe(database: DatabaseSync): void {
+  const idColumns = [
+    ["entities", "entity_id"],
+    ["aliases", "alias_id"],
+    ["evidence", "evidence_id"],
+    ["claims", "claim_id"],
+    ["proposals", "proposal_id"],
+    ["audit_events", "audit_event_id"],
+  ] as const;
+  for (const [table, column] of idColumns) {
+    const row = database.prepare(
+      `SELECT COUNT(*) AS count
+       FROM ${table} AS legacy
+       JOIN ${table} AS shared ON shared.${column} = legacy.${column}
+       WHERE legacy.scope_id <> ? AND shared.scope_id = ?`,
+    ).get(SHARED_SCOPE, SHARED_SCOPE);
+    if (row?.count !== 0) throw new Error(`Cannot merge shared knowledge scope: duplicate ${table} IDs exist.`);
+  }
+
+  const uniquenessChecks = [
+    ["accepted aliases", "SELECT 1 FROM aliases WHERE status = 'accepted' GROUP BY normalized_alias HAVING COUNT(*) > 1 LIMIT 1"],
+    ["evidence identities", "SELECT 1 FROM evidence GROUP BY excerpt_hash, source_kind, COALESCE(locator, ''), trust_class HAVING COUNT(*) > 1 LIMIT 1"],
+    ["proposal fingerprints", "SELECT 1 FROM proposals GROUP BY candidate_fingerprint HAVING COUNT(*) > 1 LIMIT 1"],
+    ["proposal idempotency keys", "SELECT 1 FROM proposals WHERE idempotency_key IS NOT NULL GROUP BY idempotency_key HAVING COUNT(*) > 1 LIMIT 1"],
+  ] as const;
+  for (const [description, query] of uniquenessChecks) {
+    if (database.prepare(query).get() !== undefined) {
+      throw new Error(`Cannot merge shared knowledge scope: duplicate ${description} exist.`);
+    }
+  }
+}
 
 export function getCurrentSchemaVersion(database: DatabaseSync): number {
   const pragmaVersion = readIntegerPragma(database, "user_version");

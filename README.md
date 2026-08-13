@@ -7,7 +7,7 @@ Git-managed Pi customizations.
 - [`ask-user.ts`](extensions/ask-user.ts) provides the interactive `ask_user` tool.
 - [`telemetry`](extensions/telemetry) records operation, turn, model, token, and cost metrics described below.
 - [`todo-session.ts`](extensions/todo-session.ts) records the last useful Pi session in the nearest project `TODO.md`.
-- [`extensions/knowledge-graph/index.ts`](extensions/knowledge-graph/index.ts) provides scoped, evidence-backed search, reviewed proposals, correction/history, export, and explicit forget/purge workflows. See [`docs/knowledge-graph-mvp-operations.md`](docs/knowledge-graph-mvp-operations.md).
+- [`extensions/knowledge-graph/index.ts`](extensions/knowledge-graph/index.ts) provides shared, evidence-backed search, autonomous insert/update/delete maintenance, correction/history, export, and explicit forget/purge workflows. Autonomous maintenance is the only agent-facing mutation path, and knowledge search is routed before code/file search for project-fact questions. See [`docs/knowledge-graph-mvp-operations.md`](docs/knowledge-graph-mvp-operations.md), [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md), and [`docs/knowledge-graph-adr-009-shared-knowledge-scope.md`](docs/knowledge-graph-adr-009-shared-knowledge-scope.md).
 - [`scripts/pi-auto-resume`](scripts/pi-auto-resume) is the launcher used by `pi` to resume that recorded session, including when started from a project subdirectory.
 
 Pi loads this checkout directly as a local package, so edits here take effect after `/reload` (or after restarting Pi).

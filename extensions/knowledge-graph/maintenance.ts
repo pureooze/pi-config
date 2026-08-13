@@ -19,6 +19,8 @@ import {
   type SupersessionLinkRecord,
 } from "./repository.ts";
 
+const SHARED_SCOPE_ID = "global";
+
 export interface ProposalClaimLink {
   readonly scopeId: string;
   readonly proposalId: string;
@@ -213,7 +215,8 @@ export class KnowledgeGraphMaintenance {
 
   restoreSnapshot(snapshot: unknown): void {
     assertSnapshot(snapshot);
-    if (snapshot.schemaVersion !== this.schemaVersion()) {
+    const sharedSnapshot = normalizeSnapshotScopes(snapshot);
+    if (sharedSnapshot.schemaVersion !== this.schemaVersion()) {
       throw new KnowledgeGraphMaintenanceError("invalid_snapshot", "Snapshot schema version does not match the empty store.");
     }
     if (this.hasCanonicalRows()) {
@@ -221,12 +224,23 @@ export class KnowledgeGraphMaintenance {
     }
     this.database.exec("BEGIN IMMEDIATE");
     try {
-      for (const scope of snapshot.scopes) {
+      for (const scope of sharedSnapshot.scopes) {
+        const existing = this.database.prepare(
+          `SELECT kind, project_root, identity_path FROM scopes WHERE scope_id = ?`,
+        ).get(scope.scopeId);
+        if (existing !== undefined) {
+          if (existing.kind !== scope.kind ||
+            (existing.project_root ?? null) !== (scope.projectRoot ?? null) ||
+            (existing.identity_path ?? null) !== (scope.identityPath ?? null)) {
+            throw new KnowledgeGraphMaintenanceError("invalid_snapshot", "Snapshot scope metadata conflicts with the existing shared scope.");
+          }
+          continue;
+        }
         this.database.prepare(
           `INSERT INTO scopes(scope_id, kind, project_root, identity_path, created_at) VALUES (?, ?, ?, ?, ?)`,
         ).run(scope.scopeId, scope.kind, scope.projectRoot ?? null, scope.identityPath ?? null, scope.createdAt);
       }
-      for (const proposal of snapshot.proposals) {
+      for (const proposal of sharedSnapshot.proposals) {
         this.database.prepare(
           `INSERT INTO proposals(
              proposal_id, scope_id, status, candidate_fingerprint, idempotency_key, actor_type,
@@ -238,19 +252,19 @@ export class KnowledgeGraphMaintenance {
           proposal.sessionId ?? null, proposal.sessionEntryId ?? null, proposal.toolCallId ?? null, proposal.branchLeaf ?? null,
         );
       }
-      for (const entity of snapshot.entities) {
+      for (const entity of sharedSnapshot.entities) {
         this.database.prepare(
           `INSERT INTO entities(entity_id, scope_id, label, normalized_label, entity_type, status, created_at, reviewed_at, proposal_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(entity.entityId, entity.scopeId, entity.label, entity.normalizedLabel, entity.type, entity.status, entity.createdAt, entity.reviewedAt ?? null, entity.proposalId ?? null);
       }
-      for (const alias of snapshot.aliases) {
+      for (const alias of sharedSnapshot.aliases) {
         this.database.prepare(
           `INSERT INTO aliases(alias_id, scope_id, entity_id, alias, normalized_alias, status, created_at, reviewed_at, proposal_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(alias.aliasId, alias.scopeId, alias.entityId, alias.alias, alias.normalizedAlias, alias.status, alias.createdAt, alias.reviewedAt ?? null, alias.proposalId ?? null);
       }
-      for (const item of snapshot.evidence) {
+      for (const item of sharedSnapshot.evidence) {
         this.database.prepare(
           `INSERT INTO evidence(
              evidence_id, scope_id, source_kind, locator, excerpt, excerpt_hash, captured_at, source_observed_at,
@@ -262,7 +276,7 @@ export class KnowledgeGraphMaintenance {
           item.sessionEntryId ?? null, item.toolCallId ?? null, item.branchLeaf ?? null, item.actorType ?? null,
         );
       }
-      for (const claim of snapshot.claims) {
+      for (const claim of sharedSnapshot.claims) {
         this.database.prepare(
           `INSERT INTO claims(
              claim_id, scope_id, status, subject_entity_id, predicate, object_kind, object_entity_id, object_text,
@@ -279,22 +293,22 @@ export class KnowledgeGraphMaintenance {
           claim.observedAt, claim.validFrom ?? null, claim.validTo ?? null, claim.createdAt, claim.reviewedAt ?? null, claim.proposalId ?? null,
         );
       }
-      for (const link of snapshot.claimEvidence) {
+      for (const link of sharedSnapshot.claimEvidence) {
         this.database.prepare(`INSERT INTO claim_evidence(scope_id, claim_id, evidence_id, evidence_role) VALUES (?, ?, ?, ?)`).run(link.scopeId, link.claimId, link.evidenceId, link.role);
       }
-      for (const link of snapshot.claimSupersession) {
+      for (const link of sharedSnapshot.claimSupersession) {
         this.database.prepare(`INSERT INTO claim_supersession(scope_id, prior_claim_id, replacement_claim_id, reason, created_at) VALUES (?, ?, ?, ?, ?)`).run(link.scopeId, link.priorClaimId, link.replacementClaimId, link.reason ?? null, link.createdAt);
       }
-      for (const link of snapshot.proposalClaims) {
+      for (const link of sharedSnapshot.proposalClaims) {
         this.database.prepare(`INSERT INTO proposal_claims(scope_id, proposal_id, claim_id) VALUES (?, ?, ?)`).run(link.scopeId, link.proposalId, link.claimId);
       }
-      for (const link of snapshot.proposalEvidence) {
+      for (const link of sharedSnapshot.proposalEvidence) {
         this.database.prepare(`INSERT INTO proposal_evidence(scope_id, proposal_id, evidence_id) VALUES (?, ?, ?)`).run(link.scopeId, link.proposalId, link.evidenceId);
       }
-      for (const link of snapshot.proposalSupersession) {
+      for (const link of sharedSnapshot.proposalSupersession) {
         this.database.prepare(`INSERT INTO proposal_supersession(scope_id, proposal_id, prior_claim_id, reason) VALUES (?, ?, ?, ?)`).run(link.scopeId, link.proposalId, link.priorClaimId, link.reason ?? null);
       }
-      for (const event of snapshot.auditEvents) {
+      for (const event of sharedSnapshot.auditEvents) {
         this.database.prepare(
           `INSERT INTO audit_events(
              audit_event_id, scope_id, actor_type, action, target_type, target_id, occurred_at,
@@ -335,7 +349,7 @@ export class KnowledgeGraphMaintenance {
   }
 
   private hasCanonicalRows(): boolean {
-    const tables = ["scopes", "entities", "aliases", "evidence", "claims", "proposals", "audit_events"];
+    const tables = ["entities", "aliases", "evidence", "claims", "proposals", "audit_events"];
     return tables.some((table) => {
       const row = this.database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get();
       return isRecord(row) && typeof row.count === "number" && row.count > 0;
@@ -423,6 +437,32 @@ function optionalString(value: unknown): string | undefined {
 function numberValue(value: unknown): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value)) throw new KnowledgeGraphMaintenanceError("storage_error", "Export row contains invalid time.");
   return value;
+}
+
+function normalizeSnapshotScopes(snapshot: KnowledgeGraphSnapshot): KnowledgeGraphSnapshot {
+  const existingGlobal = snapshot.scopes.find((scope) => scope.scopeId === SHARED_SCOPE_ID);
+  const createdAt = existingGlobal?.createdAt ?? snapshot.scopes[0]?.createdAt ?? 0;
+  return {
+    ...snapshot,
+    scopes: [{
+      scopeId: SHARED_SCOPE_ID,
+      kind: "global",
+      projectRoot: undefined,
+      identityPath: undefined,
+      createdAt,
+    }],
+    entities: snapshot.entities.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    aliases: snapshot.aliases.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    evidence: snapshot.evidence.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    claims: snapshot.claims.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    proposals: snapshot.proposals.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    claimEvidence: snapshot.claimEvidence.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    claimSupersession: snapshot.claimSupersession.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    proposalClaims: snapshot.proposalClaims.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    proposalEvidence: snapshot.proposalEvidence.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    proposalSupersession: snapshot.proposalSupersession.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+    auditEvents: snapshot.auditEvents.map((record) => ({ ...record, scopeId: SHARED_SCOPE_ID })),
+  };
 }
 
 function assertSnapshot(value: unknown): asserts value is KnowledgeGraphSnapshot {

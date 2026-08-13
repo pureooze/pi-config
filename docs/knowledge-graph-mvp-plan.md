@@ -1,16 +1,20 @@
 # Pi knowledge graph MVP plan
 
-**Status:** complete — KGM-G6 passed
+**Status:** complete — KGM-G6 passed; current agent mutation policy superseded by ADR-008
 
 **Last reviewed:** 2026-08-11
 
+> This document records the completed reviewed-write MVP. The current product policy is autonomous maintenance: `knowledge_maintain` is the only agent-facing mutation tool, and no proposal/review approval fallback is exposed. See [`knowledge-graph-adr-008-autonomous-agent-maintenance.md`](knowledge-graph-adr-008-autonomous-agent-maintenance.md).
+
 **Research basis:** [knowledge-graph-research.md](knowledge-graph-research.md)
+
+> Runtime knowledge visibility is now the single shared scope defined by [`knowledge-graph-adr-009-shared-knowledge-scope.md`](knowledge-graph-adr-009-shared-knowledge-scope.md); project-isolation requirements below describe the superseded design.
 
 **Post-MVP roadmap:** [knowledge-graph-implementation-plan.md](knowledge-graph-implementation-plan.md)
 
 ## Goal
 
-Prove that Pi can safely build and use a small, persistent knowledge graph across sessions with useful retrieval, evidence-backed claims, project isolation, and reviewed writes.
+Prove that Pi can safely build and use a small, persistent knowledge graph across sessions with useful retrieval, evidence-backed claims, cross-project shared memory, and reviewed writes.
 
 The MVP must support this end-to-end scenario:
 
@@ -19,7 +23,7 @@ The MVP must support this end-to-end scenario:
 3. The user confirms or reviews it before it becomes accepted knowledge.
 4. In a later session, Pi retrieves the accepted claim and its evidence.
 5. The user can correct or supersede the claim without erasing its history.
-6. The claim is unavailable from an unrelated project scope.
+6. The claim remains available when the session moves to another working directory.
 7. The user can inspect, export, forget, or purge the stored data.
 
 ## MVP boundaries
@@ -27,13 +31,13 @@ The MVP must support this end-to-end scenario:
 ### Included
 
 - Local-only, single-user operation.
-- One global SQLite database with global and project scopes.
+- One global SQLite database with one shared knowledge scope.
 - Entities, aliases, evidence, directed claims, minimal temporal fields, status, supersession, and audit events.
 - FTS5 lexical retrieval and bounded one-hop graph expansion.
 - Pi tools for search, expansion, and proposal submission.
 - User review through Pi UI/commands.
 - Explicit agent-driven retrieval; no automatic per-turn context injection.
-- Runtime validation, cancellation, bounded output, secret scanning, project isolation, export, correction, and deletion.
+- Runtime validation, cancellation, bounded output, secret scanning, shared visibility, export, correction, and deletion.
 - TUI behavior plus safe degradation in print, JSON, and RPC modes.
 
 ### Explicitly deferred
@@ -56,7 +60,7 @@ Exact schemas are finalized in `KGM-1.4`, but the intended surface is:
 
 | Surface | Purpose |
 |---|---|
-| `knowledge_search` | Search accepted claims/entities in the current project plus intentionally global knowledge |
+| `knowledge_search` | Search all accepted claims/entities in the shared knowledge base |
 | `knowledge_get` | Expand claim, entity, evidence, history, or one-hop neighbors by stable ID |
 | `knowledge_propose` | Submit an evidence-backed candidate; accept only after the configured review/confirmation flow |
 | `/knowledge-review` | Inspect and accept, correct, reject, or supersede pending proposals |
@@ -72,7 +76,7 @@ The storage ADR may adjust names, but the MVP needs these concepts:
 
 | Record | Minimum semantics |
 |---|---|
-| Scope | `global` or a canonical project key; filtering occurs before lookup/ranking |
+| Scope | One shared `global` scope; legacy project keys are migrated into it |
 | Evidence | immutable source kind, locator, excerpt, hash, capture time, trust classification, Pi provenance |
 | Entity | stable ID, scope, type, canonical label, lifecycle status |
 | Alias | normalized alias linked to one entity within scope |

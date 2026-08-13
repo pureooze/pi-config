@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
-export interface ProjectScopeResolution {
-  readonly scopeId: string;
-  readonly kind: "project";
+export interface KnowledgeScopeResolution {
+  /** The knowledge graph is shared; these fields only describe the config context. */
+  readonly scopeId: "global";
+  readonly kind: "global";
   readonly projectRoot: string;
   readonly identityPath: string;
   readonly source: "git-common-dir" | "directory";
@@ -20,7 +20,7 @@ export class KnowledgeGraphScopeError extends Error {
   }
 }
 
-export function resolveProjectScope(cwd: string): ProjectScopeResolution {
+export function resolveKnowledgeScope(cwd: string): KnowledgeScopeResolution {
   const canonicalCwd = canonicalPath(cwd);
   try {
     const projectRoot = canonicalPath(runGit(canonicalCwd, ["rev-parse", "--show-toplevel"]));
@@ -29,16 +29,16 @@ export function resolveProjectScope(cwd: string): ProjectScopeResolution {
       ? commonDirectoryOutput
       : join(canonicalCwd, commonDirectoryOutput));
     return {
-      scopeId: projectScopeId("git-common-dir", identityPath),
-      kind: "project",
+      scopeId: "global",
+      kind: "global",
       projectRoot,
       identityPath,
       source: "git-common-dir",
     };
   } catch {
     return {
-      scopeId: projectScopeId("directory", canonicalCwd),
-      kind: "project",
+      scopeId: "global",
+      kind: "global",
       projectRoot: canonicalCwd,
       identityPath: canonicalCwd,
       source: "directory",
@@ -69,11 +69,4 @@ function canonicalPath(value: string): string {
   } catch {
     throw new KnowledgeGraphScopeError("Current project path could not be canonicalized.");
   }
-}
-
-function projectScopeId(kind: "git-common-dir" | "directory", identityPath: string): string {
-  const digest = createHash("sha256")
-    .update(`${kind}\0${identityPath}`, "utf8")
-    .digest("hex");
-  return `project:${digest}`;
 }

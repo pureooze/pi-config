@@ -52,7 +52,7 @@ test("schema upgrades preserve canonical fixtures and leave a verified pre-upgra
       migrations: [
         ...MVP_MIGRATIONS,
         {
-          version: 8,
+          version: 9,
           name: "core_upgrade_probe",
           up(database) {
             database.exec("CREATE TABLE core_upgrade_probe (value TEXT NOT NULL)");
