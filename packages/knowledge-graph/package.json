@@ -1,6 +1,6 @@
 {
   "name": "@pureooze/pi-knowledge-graph",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Local, evidence-backed shared knowledge search and maintenance tools for Pi.",
   "license": "MIT",
   "type": "module",
