@@ -1,0 +1,40 @@
+{
+  "name": "@pureooze/pi-todo-session",
+  "version": "0.1.0",
+  "description": "Keeps the latest useful Pi session metadata in a project's TODO.md.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "session",
+    "todo"
+  ],
+  "files": [
+    "README.md",
+    "index.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/todo-session"
+  },
+  "bugs": {
+    "url": "https://github.com/pureooze/pi-config/issues"
+  },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/todo-session",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

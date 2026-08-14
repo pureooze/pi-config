@@ -4,7 +4,7 @@ The knowledge graph is a local, single-user Pi extension. It stores evidence-bac
 
 ## Installation and runtime
 
-This repository registers `./extensions/knowledge-graph/index.ts` in `package.json`. Install the local Pi package and restart Pi, or reload the extension with `/reload` after changing it. The supported development/runtime baseline is:
+The `@pureooze/pi-knowledge-graph` package exposes `./index.ts` through its Pi manifest. For local development, load `./packages/knowledge-graph/index.ts` directly and restart Pi, or reload the extension with `/reload` after changing it. The supported development/runtime baseline is:
 
 - Pi `0.84.0`;
 - Node `v24.14.1` or newer;

@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-const { resolveKnowledgeGraphConfig } = await import("../../extensions/knowledge-graph/config.ts");
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
-const { KnowledgeGraphRepositories } = await import("../../extensions/knowledge-graph/repository.ts");
-const { MVP_MIGRATIONS } = await import("../../extensions/knowledge-graph/migrations.ts");
+const { resolveKnowledgeGraphConfig } = await import("../../packages/knowledge-graph/config.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
+const { KnowledgeGraphRepositories } = await import("../../packages/knowledge-graph/repository.ts");
+const { MVP_MIGRATIONS } = await import("../../packages/knowledge-graph/migrations.ts");
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "pi-knowledge-graph-database-test-"));

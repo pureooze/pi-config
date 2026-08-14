@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { scanSensitiveText, assertNoSecrets, KnowledgeGraphSecurityError } = await import("../../extensions/knowledge-graph/security.ts");
+const { scanSensitiveText, assertNoSecrets, KnowledgeGraphSecurityError } = await import("../../packages/knowledge-graph/security.ts");
 
 test("secret scanner rejects common credential forms without echoing values", () => {
   const cases = [

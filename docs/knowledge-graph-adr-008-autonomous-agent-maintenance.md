@@ -63,7 +63,7 @@ The MVP's 1,500-estimated-token budget remains the baseline for the original sea
 
 The behavior is covered by:
 
-- `extensions/knowledge-graph/agent-maintenance.ts`;
+- `packages/knowledge-graph/agent-maintenance.ts`;
 - `tests/unit/knowledge-graph-agent-maintenance.test.mjs`;
 - `tests/unit/knowledge-graph-extension.test.mjs`;
 - `npm run typecheck`;

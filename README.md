@@ -1,16 +1,41 @@
-# Pi config
+# Pi extensions
 
-Git-managed Pi customizations.
+This repository is an npm workspace containing independently publishable Pi packages. The workspace root is development-only; install the packages you want instead of installing the repository root.
 
-## Extensions
+## Packages
 
-- [`ask-user.ts`](extensions/ask-user.ts) provides the interactive `ask_user` tool.
-- [`telemetry`](extensions/telemetry) records operation, turn, model, token, and cost metrics described below.
-- [`todo-session.ts`](extensions/todo-session.ts) records the last useful Pi session in the nearest project `TODO.md`.
-- [`extensions/knowledge-graph/index.ts`](extensions/knowledge-graph/index.ts) provides shared, evidence-backed search, autonomous insert/update/delete maintenance, correction/history, export, and explicit forget/purge workflows. Autonomous maintenance is the only agent-facing mutation path, and knowledge search is routed before code/file search for project-fact questions. See [`docs/knowledge-graph-mvp-operations.md`](docs/knowledge-graph-mvp-operations.md), [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md), and [`docs/knowledge-graph-adr-009-shared-knowledge-scope.md`](docs/knowledge-graph-adr-009-shared-knowledge-scope.md).
-- [`scripts/pi-auto-resume`](scripts/pi-auto-resume) is the launcher used by `pi` to resume that recorded session, including when started from a project subdirectory.
+| Package | Purpose | Install |
+| --- | --- | --- |
+| [`@pureooze/pi-ask-user`](packages/ask-user) | Interactive `ask_user` tool | `pi install npm:@pureooze/pi-ask-user` |
+| [`@pureooze/pi-telemetry`](packages/telemetry) | Local operation and usage metrics | `pi install npm:@pureooze/pi-telemetry` |
+| [`@pureooze/pi-todo-session`](packages/todo-session) | Saves the latest useful session in `TODO.md` | `pi install npm:@pureooze/pi-todo-session` |
+| [`@pureooze/pi-knowledge-graph`](packages/knowledge-graph) | Local shared knowledge search and maintenance | `pi install npm:@pureooze/pi-knowledge-graph` |
 
-Pi loads this checkout directly as a local package, so edits here take effect after `/reload` (or after restarting Pi).
+Each package README documents its behavior and data handling. Pi packages execute with the permissions of the Pi process; review an extension before installing it.
+
+## Local development
+
+```bash
+npm ci
+npm run test:all
+```
+
+Test an individual extension without installing it permanently:
+
+```bash
+pi --no-extensions -e ./packages/ask-user/index.ts
+pi --no-extensions -e ./packages/telemetry/index.ts
+pi --no-extensions -e ./packages/todo-session/index.ts
+pi --no-extensions -e ./packages/knowledge-graph/index.ts
+```
+
+Install a local package for a project-scoped trial:
+
+```bash
+pi install ./packages/ask-user -l
+```
+
+The root workspace also contains the knowledge-graph test fixtures, validation scripts, and design documentation. Those files are not included in any package tarball.
 
 ## Companion Pi packages
 
@@ -28,46 +53,6 @@ pi install npm:pi-system-reminders
 
 Restart Pi after installation. Use `/mcp setup` to configure MCP sources; see each package's linked documentation for its full setup and security considerations.
 
-## Telemetry
-
-Telemetry is appended as one JSON object per settled outer operation to:
-
-```text
-~/.pi/agent/telemetry/operations.jsonl
-```
-
-Set `PI_TELEMETRY_PATH` to use another path. Each record includes operation and outer-turn durations plus usage grouped by actual provider/model.
-
-Telemetry does **not** store prompts, responses, tool arguments or results, delegated task text, stderr, or error text. It does store the session ID and working directory so local results can be grouped by session or project.
-
-For controlled comparisons, label Pi processes with an experiment and optional variant:
-
-```bash
-PI_TELEMETRY_EXPERIMENT=auth-refactor PI_TELEMETRY_VARIANT=baseline pi
-```
-
-Every operation also records its Pi session ID.
-
-Inside Pi, use `/telemetry-status` for the path/count, `/telemetry-report` for a compact comparison, or filter to one session with `/telemetry-report <session-id>`. For the full report:
-
-```bash
-node scripts/telemetry-report.mjs
-# Filter one Pi session:
-node scripts/telemetry-report.mjs --session <session-id>
-# Or report another file, optionally filtered:
-node scripts/telemetry-report.mjs /path/to/operations.jsonl --session <session-id>
-```
-
-To configure this checkout on another machine, clone it and install the local package plus its companion packages:
-
-```bash
-pi install /absolute/path/to/pi-config
-pi install npm:pi-mcp-adapter
-pi install npm:pi-system-reminders
-```
-
-Pi records the local checkout path in `~/.pi/agent/settings.json`; it does not copy the package.
-
 ## Automatic session resume
 
 Install the launcher after cloning this repository:
@@ -76,19 +61,6 @@ Install the launcher after cloning this repository:
 install -m 755 scripts/pi-auto-resume ~/.local/bin/pi
 ```
 
-With a nearby `TODO.md`, bare `pi` resumes its recorded non-empty session. If that
-session is unavailable, it selects the newest usable session for the project.
-Explicit session flags and Pi management commands pass through unchanged. Set
-`PI_TODO_NEW_SESSION=1 pi` (or `PI_AUTO_RESUME=0 pi`) to start fresh once.
+With a nearby `TODO.md`, bare `pi` resumes its recorded non-empty session. If that session is unavailable, it selects the newest usable session for the project. Explicit session flags and Pi management commands pass through unchanged. Set `PI_TODO_NEW_SESSION=1 pi` (or `PI_AUTO_RESUME=0 pi`) to start fresh once.
 
-The launcher is a wrapper around the real Pi executable; it does not replace Pi
-itself.
-
-## Development
-
-This repository uses npm `11.11.0` with the committed `package-lock.json`.
-
-```bash
-npm ci
-npm run test:all
-```
+The launcher is a wrapper around the real Pi executable; it does not replace Pi itself.

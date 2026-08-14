@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const { resolveKnowledgeGraphConfig } = await import("../../extensions/knowledge-graph/config.ts");
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
+const { resolveKnowledgeGraphConfig } = await import("../../packages/knowledge-graph/config.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
 const {
   KnowledgeGraphRepositories,
   computeCandidateFingerprint,
   computeEvidenceHash,
-} = await import("../../extensions/knowledge-graph/repository.ts");
+} = await import("../../packages/knowledge-graph/repository.ts");
 
 const projectScope = `project:${"a".repeat(64)}`;
 const otherProjectScope = `project:${"b".repeat(64)}`;

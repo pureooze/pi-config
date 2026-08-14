@@ -1,0 +1,39 @@
+{
+  "name": "@pureooze/pi-ask-user",
+  "version": "0.1.0",
+  "description": "Adds an interactive ask_user tool to Pi.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension"
+  ],
+  "files": [
+    "README.md",
+    "index.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/ask-user"
+  },
+  "bugs": {
+    "url": "https://github.com/pureooze/pi-config/issues"
+  },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/ask-user",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

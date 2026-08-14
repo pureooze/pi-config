@@ -39,7 +39,7 @@ When checking a task, append concise evidence:
 - [x] **KG-N.N — Add schema migration runner.**
   - Depends on: KG-N.M
   - Acceptance: migrations are transactional and an older fixture upgrades successfully.
-  - Evidence: `extensions/knowledge-graph/storage/migrations.ts`; `npm test -- migrations` passes.
+  - Evidence: `packages/knowledge-graph/storage/migrations.ts`; `npm test -- migrations` passes.
 ```
 
 Acceptable evidence includes:
@@ -65,7 +65,7 @@ Acceptable evidence includes:
 This is a target layout, subject to the architecture decisions in Phase 1:
 
 ```text
-extensions/knowledge-graph/
+packages/knowledge-graph/
 ├── index.ts                    # Pi registration only
 ├── config.ts                   # runtime-validated global/project config
 ├── domain/
@@ -143,7 +143,7 @@ The extension entrypoint should be composition/registration code. Domain and sto
 - [x] **KG-0.4 — Record the repository’s validation baseline.**
   - Depends on: none
   - Acceptance: document available Node/Pi versions, current startup command, type-check/test commands if any, and known pre-existing failures without modifying unrelated work.
-  - Evidence: 2026-08-06 read-only baseline: Pi `0.84.0`, Node `v24.14.1`, npm `11.11.0`; no lockfile, `scripts`, or `tsconfig.json`; `pi --offline --help` exited 0 with no stderr. Existing unrelated working-tree changes were present in `AGENTS.md`, `README.md`, `package.json`, `extensions/todo-session.ts`, `extensions/subagents/*`, and `scripts/pi-auto-resume` before this work.
+  - Evidence: 2026-08-06 read-only baseline: Pi `0.84.0`, Node `v24.14.1`, npm `11.11.0`; no lockfile, `scripts`, or `tsconfig.json`; `pi --offline --help` exited 0 with no stderr. Existing unrelated working-tree changes were present in `AGENTS.md`, `README.md`, `package.json`, `packages/todo-session/index.ts`, `extensions/subagents/*`, and `scripts/pi-auto-resume` before this work.
 
 - [x] **Phase 0 gate — Baseline is reproducible.**
   - Depends on: KG-0.1–KG-0.4
@@ -210,7 +210,7 @@ These decisions prevent expensive schema and API rewrites. Complete them before 
 
 - [ ] **KG-2.1 — Add the extension module skeleton.**
   - Depends on: Phase 1 gate
-  - Acceptance: create `extensions/knowledge-graph/` with a minimal `index.ts`; extension loads without registering unfinished behavior.
+  - Acceptance: create `packages/knowledge-graph/` with a minimal `index.ts`; extension loads without registering unfinished behavior.
 
 - [ ] **KG-2.2 — Register the extension in the Pi package manifest.**
   - Depends on: KG-2.1
@@ -234,7 +234,7 @@ These decisions prevent expensive schema and API rewrites. Complete them before 
 
 - [ ] **KG-2.6 — Add a read-only extension smoke test.**
   - Depends on: KG-2.1–KG-2.5
-  - Acceptance: `pi --no-extensions -e ./extensions/knowledge-graph/index.ts` starts cleanly with networking disabled/unavailable.
+  - Acceptance: `pi --no-extensions -e ./packages/knowledge-graph/index.ts` starts cleanly with networking disabled/unavailable.
 
 - [ ] **Phase 2 gate — Safe development loop exists.**
   - Depends on: KG-2.1–KG-2.6
@@ -641,12 +641,12 @@ This increment intentionally replaces the reviewed-write MVP's agent mutation su
 - [x] **KG-A.1 — Register autonomous `knowledge_maintain` operations.**
   - Depends on: KGM-G6
   - Acceptance: the agent can deliberately insert, append-update, or delete one scoped item through strict bounded inputs; insert/update use evidence-backed proposal normalization and deletion uses the existing bounded forget service.
-  - Evidence: [`extensions/knowledge-graph/agent-maintenance.ts`](../extensions/knowledge-graph/agent-maintenance.ts), [`extensions/knowledge-graph/index.ts`](../extensions/knowledge-graph/index.ts), [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](knowledge-graph-adr-008-autonomous-agent-maintenance.md).
+  - Evidence: [`packages/knowledge-graph/agent-maintenance.ts`](../packages/knowledge-graph/agent-maintenance.ts), [`packages/knowledge-graph/index.ts`](../packages/knowledge-graph/index.ts), [`docs/knowledge-graph-adr-008-autonomous-agent-maintenance.md`](knowledge-graph-adr-008-autonomous-agent-maintenance.md).
 
 - [x] **KG-A.2 — Preserve autonomous mutation safety and provenance.**
   - Depends on: KG-A.1
   - Acceptance: global scope remains explicit; insert/update require bounded evidence and pre-persistence secret scanning; update preserves superseded history; delete is single-target, non-purge, bounded, reasoned, transactional, and audited with agent/session/tool/branch provenance.
-  - Evidence: [`extensions/knowledge-graph/deletion.ts`](../extensions/knowledge-graph/deletion.ts), [`extensions/knowledge-graph/proposal.ts`](../extensions/knowledge-graph/proposal.ts), [`tests/unit/knowledge-graph-agent-maintenance.test.mjs`](../tests/unit/knowledge-graph-agent-maintenance.test.mjs); `npm run typecheck`, `npm run test:unit`, and `npm run test:benchmark` pass with the ADR-008 active-tool budget.
+  - Evidence: [`packages/knowledge-graph/deletion.ts`](../packages/knowledge-graph/deletion.ts), [`packages/knowledge-graph/proposal.ts`](../packages/knowledge-graph/proposal.ts), [`tests/unit/knowledge-graph-agent-maintenance.test.mjs`](../tests/unit/knowledge-graph-agent-maintenance.test.mjs); `npm run typecheck`, `npm run test:unit`, and `npm run test:benchmark` pass with the ADR-008 active-tool budget.
 
 - [x] **KG-A.3 — Document the autonomous policy and recovery trade-offs.**
   - Depends on: KG-A.1, KG-A.2

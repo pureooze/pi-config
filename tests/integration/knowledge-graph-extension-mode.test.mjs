@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import test from "node:test";
 
-const extensionPath = resolve("extensions/knowledge-graph/index.ts");
+const extensionPath = resolve("packages/knowledge-graph/index.ts");
 
 for (const command of ["--help", "--list-models"]) {
   test(`knowledge graph extension loads in offline JSON mode with ${command}`, () => {

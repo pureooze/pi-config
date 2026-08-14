@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const { resolveKnowledgeScope } = await import("../../extensions/knowledge-graph/scope.ts");
+const { resolveKnowledgeScope } = await import("../../packages/knowledge-graph/scope.ts");
 
 test("knowledge scope is shared while config context still resolves through Git", () => {
   const scope = resolveKnowledgeScope(process.cwd());

@@ -2,9 +2,9 @@ import { readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const { resolveKnowledgeGraphConfig } = await import("../../extensions/knowledge-graph/config.ts");
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
-const { KnowledgeGraphRepositories } = await import("../../extensions/knowledge-graph/repository.ts");
+const { resolveKnowledgeGraphConfig } = await import("../../packages/knowledge-graph/config.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
+const { KnowledgeGraphRepositories } = await import("../../packages/knowledge-graph/repository.ts");
 const corpus = JSON.parse(readFileSync(resolve("tests/fixtures/knowledge-graph-mvp-corpus.json"), "utf8"));
 
 export const CORPUS_NOW = Date.parse("2026-08-07T00:00:00.000Z");

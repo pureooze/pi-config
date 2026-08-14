@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { KnowledgeGraphAgentMaintenanceService } = await import("../../extensions/knowledge-graph/agent-maintenance.ts");
-const { KnowledgeGraphRetrieval } = await import("../../extensions/knowledge-graph/retrieval.ts");
+const { KnowledgeGraphAgentMaintenanceService } = await import("../../packages/knowledge-graph/agent-maintenance.ts");
+const { KnowledgeGraphRetrieval } = await import("../../packages/knowledge-graph/retrieval.ts");
 const {
   FIXTURE_NOW,
   PROJECT_SCOPE,

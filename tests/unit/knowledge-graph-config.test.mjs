@@ -10,7 +10,7 @@ const {
   prepareStoragePaths,
   resolveKnowledgeGraphConfig,
   StoragePathError,
-} = await import("../../extensions/knowledge-graph/config.ts");
+} = await import("../../packages/knowledge-graph/config.ts");
 
 function createFixtureRoot() {
   return mkdtempSync(join(tmpdir(), "pi-knowledge-graph-config-test-"));

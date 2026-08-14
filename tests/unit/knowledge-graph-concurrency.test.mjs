@@ -4,16 +4,16 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 
-const { KnowledgeGraphProposalService } = await import("../../extensions/knowledge-graph/proposal.ts");
+const { KnowledgeGraphProposalService } = await import("../../packages/knowledge-graph/proposal.ts");
 const {
   PROJECT_SCOPE,
   cleanupKnowledgeGraphFixture,
   createKnowledgeGraphFixture,
 } = await import("../helpers/knowledge-graph-fixture.mjs");
 
-const databaseModule = pathToFileURL(resolve("extensions/knowledge-graph/database.ts")).href;
-const proposalModule = pathToFileURL(resolve("extensions/knowledge-graph/proposal.ts")).href;
-const repositoryModule = pathToFileURL(resolve("extensions/knowledge-graph/repository.ts")).href;
+const databaseModule = pathToFileURL(resolve("packages/knowledge-graph/database.ts")).href;
+const proposalModule = pathToFileURL(resolve("packages/knowledge-graph/proposal.ts")).href;
+const repositoryModule = pathToFileURL(resolve("packages/knowledge-graph/repository.ts")).href;
 
 const reviewWorker = `
 const { KnowledgeGraphDatabase } = await import(${JSON.stringify(databaseModule)});

@@ -3,8 +3,8 @@ import { readFileSync, statSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-const { KnowledgeGraphMaintenance } = await import("../../extensions/knowledge-graph/maintenance.ts");
-const { KnowledgeGraphDeletionService, KnowledgeGraphDeletionError } = await import("../../extensions/knowledge-graph/deletion.ts");
+const { KnowledgeGraphMaintenance } = await import("../../packages/knowledge-graph/maintenance.ts");
+const { KnowledgeGraphDeletionService, KnowledgeGraphDeletionError } = await import("../../packages/knowledge-graph/deletion.ts");
 const {
   GLOBAL_SCOPE,
   OTHER_PROJECT_SCOPE,

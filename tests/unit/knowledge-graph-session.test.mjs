@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const { KnowledgeGraphSessionRuntime } = await import("../../extensions/knowledge-graph/session.ts");
+const { KnowledgeGraphSessionRuntime } = await import("../../packages/knowledge-graph/session.ts");
 
 function context() {
   return { cwd: process.cwd(), isProjectTrusted: () => false };

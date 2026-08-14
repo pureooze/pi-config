@@ -1,0 +1,40 @@
+{
+  "name": "@pureooze/pi-telemetry",
+  "version": "0.1.0",
+  "description": "Records local Pi operation timing, model, token, and cost metrics without prompts or responses.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "telemetry"
+  ],
+  "files": [
+    "README.md",
+    "index.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/telemetry"
+  },
+  "bugs": {
+    "url": "https://github.com/pureooze/pi-config/issues"
+  },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/telemetry",
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

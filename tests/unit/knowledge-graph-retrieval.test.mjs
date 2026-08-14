@@ -4,7 +4,7 @@ import test from "node:test";
 const {
   KnowledgeGraphRetrieval,
   serializeSearchResponse,
-} = await import("../../extensions/knowledge-graph/retrieval.ts");
+} = await import("../../packages/knowledge-graph/retrieval.ts");
 const {
   cleanupCorpusFixture,
   createCorpusFixture,

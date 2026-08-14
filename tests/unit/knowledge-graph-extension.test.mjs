@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-const { default: installKnowledgeGraphExtension } = await import("../../extensions/knowledge-graph/index.ts");
+const { default: installKnowledgeGraphExtension } = await import("../../packages/knowledge-graph/index.ts");
 
 function extensionHarness() {
   const tools = new Map();

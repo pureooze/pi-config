@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { KnowledgeGraphAgentMaintenanceService } = await import("../extensions/knowledge-graph/agent-maintenance.ts");
-const { KnowledgeGraphSessionRuntime } = await import("../extensions/knowledge-graph/session.ts");
+const { KnowledgeGraphAgentMaintenanceService } = await import("../packages/knowledge-graph/agent-maintenance.ts");
+const { KnowledgeGraphSessionRuntime } = await import("../packages/knowledge-graph/session.ts");
 
 const root = mkdtempSync(join(tmpdir(), "pi-knowledge-graph-write-dogfood-"));
 const projectA = join(root, "project-a");

@@ -1,0 +1,43 @@
+{
+  "name": "@pureooze/pi-knowledge-graph",
+  "version": "0.1.0",
+  "description": "Local, evidence-backed shared knowledge search and maintenance tools for Pi.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "knowledge-graph",
+    "memory"
+  ],
+  "files": [
+    "README.md",
+    "index.ts",
+    "*.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/knowledge-graph"
+  },
+  "bugs": {
+    "url": "https://github.com/pureooze/pi-config/issues"
+  },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/knowledge-graph",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

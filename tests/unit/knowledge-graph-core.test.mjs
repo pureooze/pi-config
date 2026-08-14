@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-const { KnowledgeGraphRepositories } = await import("../../extensions/knowledge-graph/repository.ts");
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
-const { MVP_MIGRATIONS } = await import("../../extensions/knowledge-graph/migrations.ts");
+const { KnowledgeGraphRepositories } = await import("../../packages/knowledge-graph/repository.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
+const { MVP_MIGRATIONS } = await import("../../packages/knowledge-graph/migrations.ts");
 const {
   FIXTURE_NOW,
   OTHER_PROJECT_SCOPE,

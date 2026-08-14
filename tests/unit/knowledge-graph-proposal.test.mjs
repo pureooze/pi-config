@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
-const { KnowledgeGraphProposalService } = await import("../../extensions/knowledge-graph/proposal.ts");
-const { KnowledgeGraphRepositories } = await import("../../extensions/knowledge-graph/repository.ts");
-const { KnowledgeGraphRetrieval } = await import("../../extensions/knowledge-graph/retrieval.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
+const { KnowledgeGraphProposalService } = await import("../../packages/knowledge-graph/proposal.ts");
+const { KnowledgeGraphRepositories } = await import("../../packages/knowledge-graph/repository.ts");
+const { KnowledgeGraphRetrieval } = await import("../../packages/knowledge-graph/retrieval.ts");
 const {
   PROJECT_SCOPE,
   OTHER_PROJECT_SCOPE,

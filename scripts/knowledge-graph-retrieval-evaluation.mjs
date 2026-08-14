@@ -8,7 +8,7 @@ import {
 import {
   KnowledgeGraphRetrieval,
   serializeSearchResponse,
-} from "../extensions/knowledge-graph/retrieval.ts";
+} from "../packages/knowledge-graph/retrieval.ts";
 
 const fixture = createCorpusFixture();
 try {

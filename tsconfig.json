@@ -16,7 +16,7 @@
     "types": ["node"]
   },
   "include": [
-    "extensions/**/*.ts",
+    "packages/**/*.ts",
     "tests/**/*.ts"
   ],
   "exclude": [

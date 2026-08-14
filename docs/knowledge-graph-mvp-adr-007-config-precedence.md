@@ -53,7 +53,7 @@ Invalid preference environment values preserve the lower-precedence value and em
 
 ## Implementation evidence
 
-- [`extensions/knowledge-graph/config.ts`](../extensions/knowledge-graph/config.ts)
+- [`packages/knowledge-graph/config.ts`](../packages/knowledge-graph/config.ts)
 - [`tests/unit/knowledge-graph-config.test.mjs`](../tests/unit/knowledge-graph-config.test.mjs)
 - `npm run typecheck` passes.
 - `npm run test:unit` passes five tests covering precedence, trusted/untrusted project config, malformed values, environment overrides, directory/file modes, insecure permissions, and symlink rejection.

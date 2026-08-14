@@ -1,13 +1,16 @@
 {
-  "name": "pi-config",
+  "name": "pi-config-workspace",
   "version": "0.1.0",
   "private": true,
   "packageManager": "npm@11.11.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=24.14.1"
   },
-  "description": "Git-managed local Pi extensions, including a shared knowledge graph",
+  "description": "Development workspace for independently published Pi extensions",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-strip-types --test tests/unit/*.test.mjs",
@@ -19,24 +22,6 @@
     "test:benchmark": "node scripts/knowledge-graph-operational-benchmark.mjs",
     "smoke:pi": "node scripts/pi-knowledge-graph-smoke.mjs",
     "test:all": "npm run typecheck && npm run test:unit && npm run test:integration && npm run test:corpus && npm run test:retrieval && npm run test:dogfood && npm run test:benchmark && npm run smoke:pi"
-  },
-  "keywords": [
-    "pi-package"
-  ],
-  "peerDependencies": {
-    "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*",
-    "typebox": "*"
-  },
-  "pi": {
-    "extensions": [
-      "./extensions/ask-user.ts",
-      "./extensions/telemetry/index.ts",
-      "./extensions/todo-session.ts",
-      "./extensions/knowledge-graph/index.ts"
-    ]
   },
   "devDependencies": {
     "@earendil-works/pi-agent-core": "0.84.0",

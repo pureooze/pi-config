@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { resolveKnowledgeGraphConfig } = await import("../../extensions/knowledge-graph/config.ts");
-const { KnowledgeGraphDatabase } = await import("../../extensions/knowledge-graph/database.ts");
+const { resolveKnowledgeGraphConfig } = await import("../../packages/knowledge-graph/config.ts");
+const { KnowledgeGraphDatabase } = await import("../../packages/knowledge-graph/database.ts");
 const {
   KnowledgeGraphRepositories,
   computeCandidateFingerprint,
-} = await import("../../extensions/knowledge-graph/repository.ts");
+} = await import("../../packages/knowledge-graph/repository.ts");
 
 export const GLOBAL_SCOPE = "global";
 export const PROJECT_SCOPE = `project:${"a".repeat(64)}`;

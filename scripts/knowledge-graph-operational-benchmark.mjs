@@ -8,10 +8,10 @@ import {
   fixtureId,
 } from "../tests/helpers/knowledge-graph-fixture.mjs";
 
-const { default: installKnowledgeGraphExtension } = await import("../extensions/knowledge-graph/index.ts");
-const { KnowledgeGraphDatabase } = await import("../extensions/knowledge-graph/database.ts");
-const { KnowledgeGraphProposalService } = await import("../extensions/knowledge-graph/proposal.ts");
-const { KnowledgeGraphRetrieval, serializeSearchResponse } = await import("../extensions/knowledge-graph/retrieval.ts");
+const { default: installKnowledgeGraphExtension } = await import("../packages/knowledge-graph/index.ts");
+const { KnowledgeGraphDatabase } = await import("../packages/knowledge-graph/database.ts");
+const { KnowledgeGraphProposalService } = await import("../packages/knowledge-graph/proposal.ts");
+const { KnowledgeGraphRetrieval, serializeSearchResponse } = await import("../packages/knowledge-graph/retrieval.ts");
 
 const SCALE = 10_000;
 const COLD_SAMPLES = 30;
