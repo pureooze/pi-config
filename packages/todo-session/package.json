@@ -2,6 +2,7 @@
   "name": "@pureooze/pi-todo-session",
   "version": "0.1.0",
   "description": "Keeps the latest useful Pi session metadata in a project's TODO.md.",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -15,6 +16,7 @@
   ],
   "files": [
     "README.md",
+    "LICENSE",
     "index.ts"
   ],
   "publishConfig": {

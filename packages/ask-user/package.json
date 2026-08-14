@@ -2,6 +2,7 @@
   "name": "@pureooze/pi-ask-user",
   "version": "0.1.0",
   "description": "Adds an interactive ask_user tool to Pi.",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -13,6 +14,7 @@
   ],
   "files": [
     "README.md",
+    "LICENSE",
     "index.ts"
   ],
   "publishConfig": {

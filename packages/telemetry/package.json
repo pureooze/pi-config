@@ -2,6 +2,7 @@
   "name": "@pureooze/pi-telemetry",
   "version": "0.1.0",
   "description": "Records local Pi operation timing, model, token, and cost metrics without prompts or responses.",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -14,6 +15,7 @@
   ],
   "files": [
     "README.md",
+    "LICENSE",
     "index.ts"
   ],
   "publishConfig": {
