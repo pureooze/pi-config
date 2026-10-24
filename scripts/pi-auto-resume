@@ -37,8 +37,9 @@ for arg in "$@"; do
 	esac
 done
 
-# Set either variable to intentionally start a fresh session.
-if [ "${PI_TODO_NEW_SESSION:-}" = "1" ] || [ "${PI_AUTO_RESUME:-1}" = "0" ]; then
+# Auto-resume is opt-in. Set PI_AUTO_RESUME=1 to enable the TODO/session lookup.
+# PI_TODO_NEW_SESSION=1 remains a one-invocation explicit fresh-session override.
+if [ "${PI_TODO_NEW_SESSION:-}" = "1" ] || [ "${PI_AUTO_RESUME:-0}" != "1" ]; then
 	manage_session=0
 fi
 
@@ -169,7 +170,7 @@ PY
 
 		case "$mode" in
 			session)
-				launch_args=(--session "$session_id" "${launch_args[@]}")
+				launch_args=(--session "$session_id" "${launch_args[@]+"${launch_args[@]}"}")
 				cd "$project_root" || exit 1
 				;;
 			new)
@@ -180,5 +181,5 @@ PY
 	fi
 fi
 
-"$real_pi" "${launch_args[@]}"
+"$real_pi" "${launch_args[@]+"${launch_args[@]}"}"
 exit $?

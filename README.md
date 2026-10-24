@@ -10,6 +10,8 @@ This repository is an npm workspace containing independently publishable Pi pack
 | [`@pureooze/pi-telemetry`](packages/telemetry) | Local operation and usage metrics | `pi install npm:@pureooze/pi-telemetry` |
 | [`@pureooze/pi-todo-session`](packages/todo-session) | Saves the latest useful session in `TODO.md` | `pi install npm:@pureooze/pi-todo-session` |
 | [`@pureooze/pi-knowledge-graph`](packages/knowledge-graph) | Local shared knowledge search and maintenance | `pi install npm:@pureooze/pi-knowledge-graph` |
+| [`@pureooze/pi-delegate`](packages/delegate) | Fast isolated worker sessions with task memory and read-only graph access | `pi install ./packages/delegate` (local; see package README) |
+| [`@pureooze/pi-linear`](packages/linear) | Fast Linear tools (viewer, search, confirm-gated create/update) via OAuth 2.0 + PKCE | `pi install ./packages/linear` (local; see package README) |
 
 Each package README documents its behavior and data handling. Pi packages execute with the permissions of the Pi process; review an extension before installing it.
 
@@ -27,6 +29,8 @@ pi --no-extensions -e ./packages/ask-user/index.ts
 pi --no-extensions -e ./packages/telemetry/index.ts
 pi --no-extensions -e ./packages/todo-session/index.ts
 pi --no-extensions -e ./packages/knowledge-graph/index.ts
+pi --no-extensions -e ./packages/delegate/index.ts
+pi --no-extensions -e ./packages/linear/index.ts
 ```
 
 Install a local package for a project-scoped trial:
@@ -61,6 +65,6 @@ Install the launcher after cloning this repository:
 install -m 755 scripts/pi-auto-resume ~/.local/bin/pi
 ```
 
-With a nearby `TODO.md`, bare `pi` resumes its recorded non-empty session. If that session is unavailable, it selects the newest usable session for the project. Explicit session flags and Pi management commands pass through unchanged. Set `PI_TODO_NEW_SESSION=1 pi` (or `PI_AUTO_RESUME=0 pi`) to start fresh once.
+Automatic TODO/session resume is disabled by default. Bare `pi` starts normally without the wrapper selecting a project session. To opt in for one launch, run `PI_AUTO_RESUME=1 pi`; with a nearby `TODO.md`, it resumes the recorded non-empty session or selects the newest usable session for that project. Explicit session flags and Pi management commands always pass through unchanged. `PI_TODO_NEW_SESSION=1 pi` forces a fresh session for one launch, even when auto-resume is enabled.
 
 The launcher is a wrapper around the real Pi executable; it does not replace Pi itself.

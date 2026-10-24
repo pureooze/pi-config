@@ -82,6 +82,7 @@ interface OperationRecord {
 	cwd: string;
 	experiment?: string;
 	variant?: string;
+	pairId?: string;
 	classification: "direct" | "subagent";
 	outer: {
 		initialModel?: { provider: string; model: string; thinkingLevel?: string };
@@ -115,6 +116,7 @@ interface ActiveOperation {
 	cwd: string;
 	experiment?: string;
 	variant?: string;
+	pairId?: string;
 	initialModel?: { provider: string; model: string; thinkingLevel?: string };
 	agentRuns: number;
 	assistantTurns: number;
@@ -225,6 +227,7 @@ function optionalEnv(name: string): string | undefined {
 function isSubagentTool(toolName: string): boolean {
 	const normalized = toolName.toLowerCase();
 	return normalized === "subagent" ||
+		normalized === "delegate" ||
 		normalized.startsWith("delegate_to_") ||
 		normalized.includes("subagent");
 }
@@ -448,6 +451,7 @@ export default function telemetryExtension(pi: ExtensionAPI) {
 			cwd: operation.cwd,
 			experiment: operation.experiment,
 			variant: operation.variant,
+			pairId: operation.pairId,
 			classification: operation.usedSubagent ? "subagent" : "direct",
 			outer: {
 				initialModel: operation.initialModel,
@@ -474,6 +478,7 @@ export default function telemetryExtension(pi: ExtensionAPI) {
 			cwd: ctx.cwd,
 			experiment: optionalEnv("PI_TELEMETRY_EXPERIMENT"),
 			variant: optionalEnv("PI_TELEMETRY_VARIANT"),
+			pairId: optionalEnv("PI_TELEMETRY_PAIR")?.slice(0, 80),
 			initialModel: ctx.model
 				? { provider: ctx.model.provider, model: ctx.model.id, thinkingLevel: ctx.thinkingLevel }
 				: undefined,

@@ -1,0 +1,42 @@
+{
+  "name": "@pureooze/pi-model-failover",
+  "version": "0.1.0",
+  "description": "Minimal Pi failover: switch to MiniMax-M3 only after a final OpenAI rate/quota failure and continue the prior user request once.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "failover",
+    "model"
+  ],
+  "files": [
+    "README.md",
+    "LICENSE",
+    "index.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/model-failover"
+  },
+  "bugs": {
+    "url": "https://github.com/pureooze/pi-config/issues"
+  },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/model-failover",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

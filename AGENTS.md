@@ -17,6 +17,12 @@ Apply these defaults when working on TypeScript, React, Vercel, or Supabase repo
 - Do not suppress failing checks, weaken compiler/linter settings, or remove tests merely to make validation pass.
 - Report changed files, validation commands and results, and any unverified assumptions or follow-up work.
 
+## Delegate workflow (when the `delegate` tool is available)
+
+- On non-trivial repository work, first decide architecture, scope, safety constraints, and acceptance criteria yourself. Then **actually delegate at least one bounded exploration, implementation, test, or fix step** when a worker can perform it safely; don't merely say you will delegate and then do all the work directly. Give the worker explicit files, constraints, and a clear expected output. Use `explore` for read-only file inspection; it has no shell. Use `test` for shell-based verification and `implement`/`fix` for targeted edits.
+- Keep security decisions, ambiguous or cross-cutting design, final review, and the final response with the parent. Inspect worker edits and verify material claims: worker output can be wrong. Don't delegate trivial tasks, secrets, irreversible operations, or work whose handoff is likely more costly than doing it directly. If delegation is unsuitable, say why briefly.
+- Worker sees only its task brief, not this conversation. Don't send the full transcript, ask for nested delegation, or give it durable-knowledge write access. Prefer one narrow worker at a time; avoid automatic routing or parallel swarms without measurement.
+
 ## TypeScript
 
 - Preserve strict typing. Prefer inference plus explicit public-boundary types; avoid `any`, unsafe casts, non-null assertions, and broad index signatures.

@@ -1,0 +1,23 @@
+{
+  "name": "@pureooze/pi-linear",
+  "version": "0.1.0",
+  "description": "Fast, minimal Linear extension for Pi: read tools, confirm-gated writes, OAuth 2.0 + PKCE, no runtime deps.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=24.14.1" },
+  "keywords": ["pi-package", "pi", "pi-extension", "linear", "issue-tracker"],
+  "files": ["index.ts", "client.ts", "oauth.ts", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pureooze/pi-config.git",
+    "directory": "packages/linear"
+  },
+  "bugs": { "url": "https://github.com/pureooze/pi-config/issues" },
+  "homepage": "https://github.com/pureooze/pi-config/tree/main/packages/linear",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": { "extensions": ["./index.ts"] }
+}

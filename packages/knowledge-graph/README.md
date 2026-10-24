@@ -128,6 +128,18 @@ Purge is destructive and requires interactive confirmation. It removes the knowl
 
 Uninstalling or disabling the extension does not delete its database, backups, exports, or configuration. Use `/knowledge-export` or make a private backup before removing data. To remove all local files, stop Pi and delete the storage directory after confirming that you no longer need its contents.
 
+## OpenCode integration
+
+This package also includes a read-only MCP server for OpenCode. The server exposes `knowledge_search` and `knowledge_get` against the same shared SQLite store used by Pi.
+
+From this repository, register it globally with:
+
+```bash
+opencode mcp add --global pi-knowledge -- node --experimental-strip-types /Users/uzair/git/pi-config/packages/knowledge-graph/mcp-server.ts
+```
+
+The server intentionally does not expose knowledge maintenance yet. Add writes only after reviewing the MCP client's permission and trust behavior.
+
 ## Limitations
 
 - Retrieval uses lexical full-text search and bounded relationship expansion; it does not use embeddings.
