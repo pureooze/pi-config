@@ -30,7 +30,7 @@ test("knowledge graph exposes autonomous maintenance as its only agent mutation 
     const harness = extensionHarness();
     installKnowledgeGraphExtension(harness.api);
     assert.deepEqual([...harness.tools.keys()].sort(), ["knowledge_get", "knowledge_maintain", "knowledge_search"]);
-    assert.deepEqual([...harness.commands.keys()].sort(), ["knowledge-export", "knowledge-forget", "knowledge-status"]);
+    assert.deepEqual([...harness.commands.keys()].sort(), ["knowledge-export", "knowledge-forget", "knowledge-import", "knowledge-status"]);
     assert.equal(harness.handlers.has("session_start"), true);
     assert.equal(harness.handlers.has("session_shutdown"), true);
     assert.equal(harness.handlers.has("before_agent_start"), true);

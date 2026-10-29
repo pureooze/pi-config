@@ -1293,14 +1293,22 @@ export class KnowledgeGraphRepositories {
   }
 
   private withTransaction<T>(operation: () => T): T {
-    this.database.exec("BEGIN IMMEDIATE");
+    // Imports batch several maintenance operations atomically. Nested operations
+    // use savepoints so an inner failure cannot commit or roll back the batch.
+    const nested = this.database.isTransaction;
+    this.database.exec(nested ? "SAVEPOINT knowledge_nested" : "BEGIN IMMEDIATE");
     try {
       const result = operation();
-      this.database.exec("COMMIT");
+      this.database.exec(nested ? "RELEASE SAVEPOINT knowledge_nested" : "COMMIT");
       return result;
     } catch (error) {
       try {
-        this.database.exec("ROLLBACK");
+        if (nested) {
+          this.database.exec("ROLLBACK TO SAVEPOINT knowledge_nested");
+          this.database.exec("RELEASE SAVEPOINT knowledge_nested");
+        } else {
+          this.database.exec("ROLLBACK");
+        }
       } catch {
         // Preserve the original failure; the database owner will close the connection if needed.
       }

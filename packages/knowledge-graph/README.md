@@ -106,7 +106,25 @@ Shows the shared scope, database path, schema version, record counts, and config
 /knowledge-export my-backup.json
 ```
 
-Writes a private canonical export to the local `exports/` directory. Backups and exports contain your graph data; protect or delete them like the database itself.
+Writes a private canonical JSON export to the local `exports/` directory. Backups and exports contain your graph data; protect or delete them like the database itself.
+
+### OKF import and export
+
+```text
+/knowledge-export --format okf
+/knowledge-export --format okf my-knowledge-bundle
+/knowledge-import /absolute/path/to/okf-bundle
+```
+
+[Open Knowledge Format (OKF v0.2)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) bundles are directories of Markdown files with YAML frontmatter. JSON remains the default export. OKF does not replace SQLite or change search performance.
+
+- **Export:** writes a new private directory (`0700`, files `0600`) under `exports/`; never overwrites an existing destination. Includes accepted entities and current accepted claims, readable relationships, source footnotes, and an `index.md`. An `x-pi-knowledge` extension preserves typed claim values, aliases, validity dates, and evidence for import. It is a current-knowledge interchange view, **not a backup**: IDs, supersession history, proposals, audit records, and claimless entities are not restored on import. Use canonical JSON/backups for archival fidelity.
+- **Import:** reads a local bundle, validates it, shows counts, warnings and a truncated sample, then requires interactive confirmation. No UI, cancellation, validation failure, or changes during confirmation mean no imported records. Applying the batch is atomic and uses the existing secret scanning, evidence validation, deduplication and audited maintenance path. Reimporting the same bundle does not duplicate claims; imports do not update, supersede or delete existing claims.
+- **Our exports:** the structured `x-pi-knowledge` claims are authoritative. Editing just the rendered Markdown body does not edit those claims. Unsupported extension versions fail validation. Imported evidence is attributed to the local bundle file; asserted original source kinds/locators are not promoted to trusted local evidence.
+- **External bundles:** unknown concept types are accepted as generic concepts. The entire document, including unknown metadata, is preserved in `okf_content` text chunks rather than interpreted as typed graph relationships. Draft, deprecated, and stale concepts are skipped with warnings. `index.md` and `log.md` are navigation/history, not concepts. Non-Markdown assets are skipped.
+- **Safety:** imported verification is untrusted; links and sources are never fetched, and executors/attesters are never run. Bundle/entry symlinks and special files are rejected. YAML aliases and custom tags are unsupported. Limits: 256 KiB per Markdown file, 16 MiB total Markdown, 1,000 concepts, 4,000 filesystem entries, 16 directory levels, and 10,000 candidate claims. Oversized exports fail rather than silently truncate. Import is user-command-only; `knowledge_maintain` remains the sole agent-facing mutation tool.
+
+Exports contain private knowledge and local source paths. Inspect and redact bundles before sharing; exporting never uploads or commits them.
 
 ### Delete records
 

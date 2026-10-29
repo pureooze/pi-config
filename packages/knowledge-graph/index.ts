@@ -17,6 +17,8 @@ import {
   KnowledgeGraphAgentMaintenanceService,
 } from "./agent-maintenance.ts";
 import { KnowledgeGraphSessionRuntime } from "./session.ts";
+import { resolve } from "node:path";
+import { applyOkfImport, exportOkfBundle, previewOkfImport } from "./okf.ts";
 
 const searchSchema = Type.Object({
   query: Type.String({ minLength: 1, maxLength: 512 }),
@@ -214,16 +216,24 @@ function parseScopedArgument(raw: string, currentProjectScope: string): { scopeI
   return { scopeId: currentProjectScope, argument: tokens.join(" ") };
 }
 
-function parseExportArguments(raw: string): { filename: string } {
+function parseExportArguments(raw: string): { filename: string; format: "json" | "okf" } {
   const tokens = raw.trim().split(/\s+/u).filter(Boolean);
+  let format: "json" | "okf" = "json";
+  const formatIndex = tokens.indexOf("--format");
+  if (formatIndex !== -1) {
+    const value = tokens[formatIndex + 1];
+    if (value !== "okf" && value !== "json") throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Format must be json or okf.");
+    format = value;
+    tokens.splice(formatIndex, 2);
+  }
   const last = tokens.at(-1);
   // Accept the old scope suffixes as harmless compatibility aliases. There is
   // now only one shared knowledge scope, so the suffix never changes output.
   if (last === "current" || last === "global" || last === "all") tokens.pop();
   if (tokens.length > 1) {
-    throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Use: /knowledge-export [filename.json].");
+    throw new KnowledgeGraphMaintenanceError("invalid_export_name", "Use: /knowledge-export [--format json|okf] [name].");
   }
-  return { filename: tokens[0] ?? `knowledge-graph-${Date.now()}.json` };
+  return { format, filename: tokens[0] ?? `knowledge-graph-${Date.now()}${format === "json" ? ".json" : "-okf"}` };
 }
 
 function parseForgetArguments(raw: string, currentProjectScope: string):
@@ -461,13 +471,15 @@ export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
         const parsed = parseExportArguments(args);
         const maintenance = new KnowledgeGraphMaintenance(current.database.open(), current.repositories);
         const scopeIds = [current.project.scopeId];
-        const path = maintenance.writeSnapshot(parsed.filename, scopeIds);
+        const path = parsed.format === "okf"
+          ? exportOkfBundle(maintenance.exportSnapshot(scopeIds), current.config.exportDirectory, parsed.filename)
+          : maintenance.writeSnapshot(parsed.filename, scopeIds);
         for (const scopeId of scopeIds) {
           current.repositories.appendAuditEvent(scopeId, {
             actorType: "user",
             action: "export",
             targetType: "system",
-            metadataJson: JSON.stringify({ filename: parsed.filename }),
+            metadataJson: JSON.stringify({ filename: parsed.filename, format: parsed.format }),
             sessionId: ctx.sessionManager.getSessionId(),
             sessionEntryId: ctx.sessionManager.getLeafId() ?? undefined,
             branchLeaf: ctx.sessionManager.getLeafId() ?? undefined,
@@ -476,6 +488,45 @@ export default function knowledgeGraphExtension(pi: ExtensionAPI): void {
         ctx.ui.notify(`Knowledge export written to ${path}.`, "info");
       } catch (error) {
         ctx.ui.notify(maintenanceErrorMessage(error, "Knowledge export failed."), "error");
+      }
+    },
+  });
+
+  pi.registerCommand("knowledge-import", {
+    description: "Validate and preview a local OKF directory; explicitly confirm before importing shared knowledge.",
+    async handler(args, ctx) {
+      try {
+        if (!args.trim()) throw new KnowledgeGraphMaintenanceError("invalid_snapshot", "Use: /knowledge-import <OKF-directory>.");
+        const directory = resolve(ctx.cwd, args.trim());
+        const preview = previewOkfImport(directory);
+        const sample = preview.candidates.slice(0, 20).map((candidate) => {
+          const label = "label" in candidate.subject ? candidate.subject.label : candidate.subject.entityId;
+          const value = candidate.object.kind === "entity"
+            ? ("label" in candidate.object ? candidate.object.label : candidate.object.entityId)
+            : String(candidate.object.value);
+          return JSON.stringify(`${label} / ${candidate.predicate}: ${value.slice(0, 160)}`);
+        }).join("\n");
+        ctx.ui.notify(`OKF preview: ${preview.concepts} concepts, ${preview.candidates.length} candidate claims.\n${preview.warnings.join("\n")}\nSample (first 20, values truncated):\n${sample}`, "info");
+        if (preview.candidates.length === 0) return;
+        if (!ctx.hasUI) {
+          ctx.ui.notify("Interactive confirmation is unavailable; no knowledge was imported.", "warning");
+          return;
+        }
+        if (!await ctx.ui.confirm("Import OKF into shared knowledge?", `Insert up to ${preview.candidates.length} claims through the audited maintenance path. Existing claims are not overwritten. Imported verification is not trusted. Source: ${directory}`)) {
+          ctx.ui.notify("Knowledge import cancelled; no records were changed.", "info");
+          return;
+        }
+        // Re-read after the dialog, but apply only the content the user previewed.
+        if (previewOkfImport(directory).digest !== preview.digest) throw new KnowledgeGraphMaintenanceError("invalid_snapshot", "OKF bundle changed after preview; run the import again.");
+        const current = runtime.ensure(ctx);
+        const count = applyOkfImport(current.database.open(), current.repositories, current.project.scopeId, preview, {
+          sessionId: ctx.sessionManager.getSessionId(),
+          sessionEntryId: ctx.sessionManager.getLeafId() ?? undefined,
+          branchLeaf: ctx.sessionManager.getLeafId() ?? undefined,
+        });
+        ctx.ui.notify(`OKF import complete: ${count} claims inserted; ${preview.candidates.length - count} already known.`, "info");
+      } catch (error) {
+        ctx.ui.notify(maintenanceErrorMessage(error, "Knowledge import failed validation; no records were changed."), "error");
       }
     },
   });
